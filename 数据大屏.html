@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 单选题游戏 - 数据大屏</title>
+    <!-- 引入 ECharts 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js">
+    </script>
+    <!-- 引入 Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-panel: #111633;
+            --bg-card: #1a1f3a;
+            --text-primary: #e0e6ff;
+            --text-secondary: #8892b0;
+            --accent-blue: #4facfe;
+            --accent-green: #43e97b;
+            --accent-orange: #ff9a56;
+            --accent-pink: #ff6b9d;
+            --accent-purple: #a78bfa;
+            --border-color: #2a2f4a;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(79, 172, 254, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(67, 233, 123, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(167, 139, 250, 0.04) 0%, transparent 60%);
+        }
+
+        /* ========== 顶部标题栏 ========== */
+        .header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-icon {
+            font-size: 32px;
+            color: var(--accent-blue);
+            animation: pulse-icon 2s ease-in-out infinite;
+        }
+        @keyframes pulse-icon {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.15);
+                opacity: 0.8;
+            }
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        /* 日期筛选器 */
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .date-filter label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .date-filter input[type="date"] {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.3s;
+            cursor: pointer;
+        }
+        .date-filter input[type="date"]:focus {
+            border-color: var(--accent-blue);
+        }
+        .date-filter input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
+        .btn-filter {
+            background: linear-gradient(135deg, var(--accent-blue), #3d8bfd);
+            color: #fff;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .btn-filter:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(79, 172, 254, 0.4);
+        }
+        .btn-reset {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 9px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .btn-reset:hover {
+            border-color: var(--accent-pink);
+            color: var(--accent-pink);
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: blink 1.2s ease-in-out infinite;
+            margin-right: 4px;
+        }
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 6px var(--accent-green);
+            }
+            50% {
+                opacity: 0.3;
+                box-shadow: 0 0 2px var(--accent-green);
+            }
+        }
+        .live-text {
+            font-size: 13px;
+            color: var(--accent-green);
+            letter-spacing: 1px;
+        }
+
+        /* ========== 主容器 ========== */
+        .main-container {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 24px 28px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: auto;
+            gap: 20px;
+        }
+
+        /* 通用卡片 */
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            border-color: #3d4a6b;
+            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+        .card-header i {
+            font-size: 18px;
+        }
+        .card-header .icon-blue {
+            color: var(--accent-blue);
+        }
+        .card-header .icon-green {
+            color: var(--accent-green);
+        }
+        .card-header .icon-orange {
+            color: var(--accent-orange);
+        }
+        .card-header .icon-pink {
+            color: var(--accent-pink);
+        }
+        .card-header .icon-purple {
+            color: var(--accent-purple);
+        }
+
+        /* 数据概览卡片（数值型） */
+        .stat-cards-row {
+            grid-column: span 4;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .stat-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 22px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #3d4a6b;
+        }
+        .stat-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+        .stat-icon-blue {
+            background: rgba(79, 172, 254, 0.15);
+            color: var(--accent-blue);
+        }
+        .stat-icon-green {
+            background: rgba(67, 233, 123, 0.15);
+            color: var(--accent-green);
+        }
+        .stat-icon-orange {
+            background: rgba(255, 154, 86, 0.15);
+            color: var(--accent-orange);
+        }
+        .stat-icon-pink {
+            background: rgba(255, 107, 157, 0.15);
+            color: var(--accent-pink);
+        }
+        .stat-info .stat-value {
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+        .stat-info .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        /* 图表卡片网格布局 */
+        .chart-col-span-2 {
+            grid-column: span 2;
+        }
+        .chart-col-span-4 {
+            grid-column: span 4;
+        }
+        .chart-wrap {
+            flex: 1;
+            min-height: 280px;
+            width: 100%;
+        }
+        .chart-wrap-lg {
+            min-height: 320px;
+        }
+
+        /* 表格样式 */
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .table-wrap::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table thead th {
+            background: var(--bg-card);
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        table tbody td {
+            padding: 10px 10px;
+            border-bottom: 1px solid rgba(42, 47, 74, 0.5);
+            color: var(--text-primary);
+        }
+        table tbody tr {
+            transition: background 0.2s;
+        }
+        table tbody tr:hover {
+            background: rgba(79, 172, 254, 0.05);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge-correct {
+            background: rgba(67, 233, 123, 0.15);
+            color: var(--accent-green);
+        }
+        .badge-wrong {
+            background: rgba(255, 107, 157, 0.15);
+            color: var(--accent-pink);
+        }
+        .badge-win {
+            background: rgba(255, 154, 86, 0.15);
+            color: var(--accent-orange);
+        }
+        .badge-info {
+            background: rgba(79, 172, 254, 0.15);
+            color: var(--accent-blue);
+        }
+
+        /* 底部信息 */
+        .footer-bar {
+            grid-column: span 4;
+            text-align: center;
+            padding: 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            letter-spacing: 1px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 8px;
+        }
+
+        /* 空状态提示 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--text-secondary);
+            gap: 12px;
+        }
+        .empty-state i {
+            font-size: 48px;
+            opacity: 0.4;
+        }
+
+        /* AI 悬浮按钮 */
+        .ai-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        .ai-fab:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 25px rgba(139, 92, 246, 0.6);
+        }
+
+        /* AI 弹窗 */
+        .ai-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .ai-modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .ai-modal-content {
+            background: var(--bg-panel);
+            width: 650px;
+            max-width: 90%;
+            border-radius: 20px;
+            border: 1px solid var(--accent-purple);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(167, 139, 250, 0.2);
+            display: flex;
+            flex-direction: column;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            max-height: 85vh;
+        }
+        .ai-modal-overlay.show .ai-modal-content {
+            transform: translateY(0);
+        }
+        .ai-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ai-modal-title {
+            color: var(--accent-purple);
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ai-modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .ai-modal-close:hover {
+            color: var(--accent-pink);
+        }
+        .ai-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .ai-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .markdown-body h3 {
+            color: var(--accent-purple);
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .markdown-body ul, .markdown-body ol {
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+        .markdown-body p {
+            margin-bottom: 12px;
+        }
+        .markdown-body strong {
+            color: var(--accent-blue);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .stat-cards-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .chart-col-span-2,
+            .chart-col-span-4,
+            .stat-cards-row,
+            .footer-bar {
+                grid-column: span 2;
+            }
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .stat-cards-row {
+                grid-template-columns: 1fr;
+            }
+            .chart-col-span-2,
+            .chart-col-span-4,
+            .stat-cards-row,
+            .footer-bar {
+                grid-column: span 1;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== 顶部 ==================== -->
+    <div class="header">
+        <div class="header-left">
+            <i class="fas fa-gamepad header-icon"></i>
+            <div>
+                <h1 id="headerTitle">单选题游戏 · 数据大屏</h1>
+                <div class="header-subtitle">QUICK FORM - BATTLE DASHBOARD</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="live-dot"></span>
+            <span class="live-text" id="liveTime">实时监控中</span>
+            <div class="date-filter">
+                <label for="dateStart"><i class="far fa-calendar-alt"></i> 开始</label>
+                <input type="date" id="dateStart" title="筛选开始日期">
+                <label for="dateEnd">结束</label>
+                <input type="date" id="dateEnd" title="筛选结束日期">
+                <button class="btn-filter" onclick="applyDateFilter()"><i class="fas fa-filter"></i> 筛选</button>
+                <button class="btn-reset" onclick="resetDateFilter()"><i class="fas fa-undo-alt"></i> 重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 主体 ==================== -->
+    <div class="main-container" id="mainContainer">
+
+        <!-- 数据概览卡片 -->
+        <div class="stat-cards-row" id="statCardsRow">
+            <div class="stat-card">
+                <div class="stat-icon-wrap stat-icon-blue"><i class="fas fa-users"></i></div>
+                <div class="stat-info"><div class="stat-value" id="statTotalPlayers">0</div><div class="stat-label">参与玩家数</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap stat-icon-green"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info"><div class="stat-value" id="statCorrectRate">0%</div><div class="stat-label">总正确率</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap stat-icon-orange"><i class="fas fa-swords"></i></div>
+                <div class="stat-info"><div class="stat-value" id="statTotalBattles">0</div><div class="stat-label">总对战场次</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrap stat-icon-pink"><i class="fas fa-question-circle"></i></div>
+                <div class="stat-info"><div class="stat-value" id="statTotalQuestions">0</div><div class="stat-label">总答题数</div></div>
+            </div>
+        </div>
+
+        <!-- 玩家获胜次数柱状图 -->
+        <div class="card chart-col-span-2">
+            <div class="card-header"><i class="fas fa-trophy icon-orange"></i> 玩家获胜次数</div>
+            <div class="chart-wrap" id="chartWins"></div>
+        </div>
+
+        <!-- 玩家答题正确率 -->
+        <div class="card chart-col-span-2">
+            <div class="card-header"><i class="fas fa-chart-pie icon-pink"></i> 玩家答题正确率分布</div>
+            <div class="chart-wrap" id="chartAccuracy"></div>
+        </div>
+
+        <!-- 每场对战正确率趋势 -->
+        <div class="card chart-col-span-2">
+            <div class="card-header"><i class="fas fa-chart-line icon-blue"></i> 对战正确率趋势</div>
+            <div class="chart-wrap chart-wrap-lg" id="chartBattleTrend"></div>
+        </div>
+
+        <!-- 题目正确率对比 -->
+        <div class="card chart-col-span-2">
+            <div class="card-header"><i class="fas fa-balance-scale icon-purple"></i> 题目正确率对比</div>
+            <div class="chart-wrap chart-wrap-lg" id="chartQuestionAccuracy"></div>
+        </div>
+
+        <!-- 详细对战记录表格 -->
+        <div class="card chart-col-span-4">
+            <div class="card-header"><i class="fas fa-table icon-blue"></i> 详细对战记录</div>
+            <div class="table-wrap" id="tableWrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>对战时间</th>
+                            <th>玩家1</th>
+                            <th>玩家2</th>
+                            <th>获胜者</th>
+                            <th>答题数</th>
+                            <th>正确数</th>
+                            <th>正确率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="footer-bar">
+            <span id="footerInfo">数据来源：QuickForm API · 自动刷新 · 最后更新：--</span>
+        </div>
+    </div>
+
+    <!-- AI 悬浮按钮 -->
+    <button class="ai-fab" onclick="openAiModal()">
+        <i class="fas fa-magic"></i> ✨ AI 智能分析
+    </button>
+
+    <!-- AI 分析弹窗 -->
+    <div class="ai-modal-overlay" id="aiModalOverlay">
+        <div class="ai-modal-content">
+            <div class="ai-modal-header">
+                <div class="ai-modal-title"><i class="fas fa-robot"></i> DeepSeek 数据洞察与优化建议</div>
+                <button class="ai-modal-close" onclick="closeAiModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="ai-modal-body markdown-body" id="aiModalBody">
+                <!-- AI 内容将在这里呈现 -->
+            </div>
+            <div class="ai-modal-footer">
+                <button class="btn-reset" onclick="closeAiModal()">关闭</button>
+                <button class="btn-filter" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);" onclick="startAiAnalysis()">
+                    <i class="fas fa-sync-alt"></i> 重新分析
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== 全局变量 ====================
+            const API_URL = 'https://quickform.cn/api/2nam530msr/all';
+            let allData = null; // 原始全部数据
+            let filteredSubmissions = []; // 日期筛选后的数据
+            let dateStartInput = document.getElementById('dateStart');
+            let dateEndInput = document.getElementById('dateEnd');
+
+            // ECharts 实例引用
+            let chartWinsInstance = null;
+            let chartAccuracyInstance = null;
+            let chartBattleTrendInstance = null;
+            let chartQuestionAccuracyInstance = null;
+
+            // ==================== 初始化 ====================
+            function init() {
+                // 初始化日期默认值：近7天
+                const today = new Date();
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(today.getDate() - 7);
+                dateStartInput.value = formatDateStr(sevenDaysAgo);
+                dateEndInput.value = formatDateStr(today);
+
+                // 初始化 ECharts 实例
+                chartWinsInstance = echarts.init(document.getElementById('chartWins'));
+                chartAccuracyInstance = echarts.init(document.getElementById('chartAccuracy'));
+                chartBattleTrendInstance = echarts.init(document.getElementById('chartBattleTrend'));
+                chartQuestionAccuracyInstance = echarts.init(document.getElementById(
+                'chartQuestionAccuracy'));
+
+                // 窗口大小变化时自适应
+                window.addEventListener('resize', handleResize);
+
+                // 加载数据
+                fetchData();
+
+                // 实时时间更新
+                updateLiveTime();
+                setInterval(updateLiveTime, 30000);
+            }
+
+            function handleResize() {
+                chartWinsInstance && chartWinsInstance.resize();
+                chartAccuracyInstance && chartAccuracyInstance.resize();
+                chartBattleTrendInstance && chartBattleTrendInstance.resize();
+                chartQuestionAccuracyInstance && chartQuestionAccuracyInstance.resize();
+            }
+
+            function formatDateStr(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+
+            function updateLiveTime() {
+                const now = new Date();
+                document.getElementById('liveTime').textContent =
+                    `实时监控 · ${now.toLocaleTimeString('zh-CN', { hour12: false })}`;
+            }
+
+            // ==================== 数据获取 ====================
+            async function fetchData() {
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const json = await response.json();
+                    allData = json;
+                    document.getElementById('headerTitle').textContent =
+                        `${json.task_title || '单选题游戏'} · 数据大屏`;
+                    applyDateFilter(); // 初始加载后应用日期筛选
+                    document.getElementById('footerInfo').textContent =
+                        `数据来源：QuickForm API · 任务ID: ${json.task_id || '--'} · 最后更新：${new Date().toLocaleString('zh-CN')}`;
+                } catch (err) {
+                    console.error('数据加载失败:', err);
+                    document.getElementById('tableBody').innerHTML =
+                        '<tr><td colspan="7" style="text-align:center;color:var(--accent-pink);">⚠️ 数据加载失败，请检查网络或API地址</td></tr>';
+                    document.getElementById('footerInfo').textContent = '数据加载失败';
+                }
+            }
+
+            // ==================== 日期筛选 ====================
+            function applyDateFilter() {
+                if (!allData || !allData.submissions) {
+                    filteredSubmissions = [];
+                    renderAll();
+                    return;
+                }
+
+                const startVal = dateStartInput.value;
+                const endVal = dateEndInput.value;
+
+                let startDate = null;
+                let endDate = null;
+                if (startVal) startDate = new Date(startVal + 'T00:00:00');
+                if (endVal) endDate = new Date(endVal + 'T23:59:59');
+
+                filteredSubmissions = allData.submissions.filter(sub => {
+                    const subDate = new Date(sub.timestamp || sub.submitted_at);
+                    if (isNaN(subDate.getTime())) return true; // 无法解析则保留
+                    if (startDate && subDate < startDate) return false;
+                    if (endDate && subDate > endDate) return false;
+                    return true;
+                });
+
+                renderAll();
+            }
+
+            function resetDateFilter() {
+                const today = new Date();
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(today.getDate() - 7);
+                dateStartInput.value = formatDateStr(sevenDaysAgo);
+                dateEndInput.value = formatDateStr(today);
+                applyDateFilter();
+            }
+
+            // ==================== 渲染所有视图 ====================
+            function renderAll() {
+                updateStatCards();
+                updateChartWins();
+                updateChartAccuracy();
+                updateChartBattleTrend();
+                updateChartQuestionAccuracy();
+                updateTable();
+            }
+
+            // ==================== 统计概览卡片 ====================
+            function updateStatCards() {
+                const subs = filteredSubmissions;
+                const totalBattles = subs.length;
+
+                // 所有参与玩家（去重）
+                const playerSet = new Set();
+                subs.forEach(s => {
+                    if (s.p1) playerSet.add(s.p1);
+                    if (s.p2) playerSet.add(s.p2);
+                });
+                const totalPlayers = playerSet.size;
+
+                // 总答题数和正确数
+                let totalQuestions = 0;
+                let totalCorrect = 0;
+                subs.forEach(s => {
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            totalQuestions++;
+                            if (log.isCorrect) totalCorrect++;
+                        });
+                    }
+                });
+                const correctRate = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+                document.getElementById('statTotalPlayers').textContent = totalPlayers;
+                document.getElementById('statCorrectRate').textContent = correctRate + '%';
+                document.getElementById('statTotalBattles').textContent = totalBattles;
+                document.getElementById('statTotalQuestions').textContent = totalQuestions;
+            }
+
+            // ==================== 图表1：玩家获胜次数（柱状图） ====================
+            function updateChartWins() {
+                const subs = filteredSubmissions;
+                const winCount = {};
+                subs.forEach(s => {
+                    const winner = s.winner;
+                    if (winner) {
+                        winCount[winner] = (winCount[winner] || 0) + 1;
+                    }
+                });
+                const players = Object.keys(winCount);
+                const values = Object.values(winCount);
+
+                // 颜色方案
+                const colors = ['#4facfe', '#43e97b', '#ff9a56', '#ff6b9d', '#a78bfa', '#f7c948'];
+
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(17,22,51,0.95)',
+                        borderColor: '#2a2f4a',
+                        textStyle: { color: '#e0e6ff' },
+                    },
+                    grid: { left: '8%', right: '8%', top: '8%', bottom: '8%' },
+                    xAxis: {
+                        type: 'category',
+                        data: players,
+                        axisLine: { lineStyle: { color: '#2a2f4a' } },
+                        axisTick: { show: false },
+                        axisLabel: { color: '#8892b0', fontSize: 12 },
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '获胜次数',
+                        nameTextStyle: { color: '#8892b0', fontSize: 11 },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { lineStyle: { color: 'rgba(42,47,74,0.4)' } },
+                        axisLabel: { color: '#8892b0', fontSize: 11 },
+                    },
+                    series: [{
+                        type: 'bar',
+                        data: values.map((v, i) => ({
+                            value: v,
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: colors[i % colors.length] },
+                                    { offset: 1, color: 'rgba(10,14,39,0.3)' }
+                                ]),
+                                borderRadius: [8, 8, 0, 0],
+                            },
+                        })),
+                        barWidth: '40%',
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#e0e6ff',
+                            fontSize: 13,
+                            fontWeight: 'bold',
+                        },
+                    }],
+                };
+                chartWinsInstance.setOption(option, true);
+            }
+
+            // ==================== 图表2：玩家答题正确率（饼图/环形图） ====================
+            function updateChartAccuracy() {
+                const subs = filteredSubmissions;
+                const playerStats = {}; // { player: { correct, total } }
+                subs.forEach(s => {
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            const player = log.player;
+                            if (!player) return;
+                            if (!playerStats[player]) playerStats[player] = { correct: 0, total: 0 };
+                            playerStats[player].total++;
+                            if (log.isCorrect) playerStats[player].correct++;
+                        });
+                    }
+                });
+                const pieData = Object.entries(playerStats).map(([player, stats]) => ({
+                    name: player,
+                    value: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+                }));
+                const colors = ['#4facfe', '#43e97b', '#ff9a56', '#ff6b9d', '#a78bfa', '#f7c948'];
+
+                const option = {
+                    tooltip: {
+                        trigger: 'item',
+                        backgroundColor: 'rgba(17,22,51,0.95)',
+                        borderColor: '#2a2f4a',
+                        textStyle: { color: '#e0e6ff' },
+                        formatter: '{b}: {c}%',
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        right: '5%',
+                        top: 'center',
+                        textStyle: { color: '#8892b0', fontSize: 12 },
+                    },
+                    series: [{
+                        type: 'pie',
+                        radius: ['45%', '75%'],
+                        center: ['40%', '50%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 6,
+                            borderColor: 'rgba(10,14,39,0.6)',
+                            borderWidth: 3,
+                        },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            formatter: '{c}%',
+                            fontSize: 12,
+                            color: '#fff',
+                        },
+                        emphasis: {
+                            label: { fontSize: 18, fontWeight: 'bold' },
+                            scaleSize: 12,
+                        },
+                        data: pieData.map((d, i) => ({
+                            ...d,
+                            itemStyle: { color: colors[i % colors.length] },
+                        })),
+                    }],
+                };
+                chartAccuracyInstance.setOption(option, true);
+            }
+
+            // ==================== 图表3：对战正确率趋势（折线图） ====================
+            function updateChartBattleTrend() {
+                const subs = filteredSubmissions;
+                // 按时间排序
+                const sorted = [...subs].sort((a, b) => {
+                    const da = new Date(a.timestamp || a.submitted_at);
+                    const db = new Date(b.timestamp || b.submitted_at);
+                    return da - db;
+                });
+                const xLabels = [];
+                const correctRates = [];
+                sorted.forEach((s, idx) => {
+                    const dt = new Date(s.timestamp || s.submitted_at);
+                    const timeStr = isNaN(dt.getTime()) ? `对战${idx+1}` :
+                        dt.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit',
+                            minute: '2-digit' });
+                    xLabels.push(timeStr);
+                    let total = 0;
+                    let correct = 0;
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            total++;
+                            if (log.isCorrect) correct++;
+                        });
+                    }
+                    correctRates.push(total > 0 ? Math.round((correct / total) * 100) : 0);
+                });
+
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(17,22,51,0.95)',
+                        borderColor: '#2a2f4a',
+                        textStyle: { color: '#e0e6ff' },
+                        formatter: function(params) {
+                            return `${params[0].axisValue}<br/>正确率：<b>${params[0].value}%</b>`;
+                        },
+                    },
+                    grid: { left: '6%', right: '6%', top: '8%', bottom: '8%' },
+                    xAxis: {
+                        type: 'category',
+                        data: xLabels,
+                        axisLine: { lineStyle: { color: '#2a2f4a' } },
+                        axisTick: { show: false },
+                        axisLabel: { color: '#8892b0', fontSize: 11, rotate: 30 },
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '正确率(%)',
+                        min: 0,
+                        max: 100,
+                        nameTextStyle: { color: '#8892b0', fontSize: 11 },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { lineStyle: { color: 'rgba(42,47,74,0.4)' } },
+                        axisLabel: { color: '#8892b0', fontSize: 11 },
+                    },
+                    series: [{
+                        type: 'line',
+                        data: correctRates,
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 10,
+                        lineStyle: {
+                            color: '#4facfe',
+                            width: 3,
+                            shadowBlur: 12,
+                            shadowColor: 'rgba(79,172,254,0.5)',
+                        },
+                        itemStyle: { color: '#4facfe' },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(79,172,254,0.35)' },
+                                { offset: 1, color: 'rgba(79,172,254,0.02)' },
+                            ]),
+                        },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#e0e6ff',
+                            fontSize: 12,
+                            formatter: '{c}%',
+                        },
+                    }],
+                };
+                chartBattleTrendInstance.setOption(option, true);
+            }
+
+            // ==================== 图表4：题目正确率对比（横向柱状图） ====================
+            function updateChartQuestionAccuracy() {
+                const subs = filteredSubmissions;
+                const questionStats = {}; // { questionText: { correct, total } }
+                subs.forEach(s => {
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            const qText = log.questionText || '未知题目';
+                            if (!questionStats[qText]) questionStats[qText] = { correct: 0, total: 0 };
+                            questionStats[qText].total++;
+                            if (log.isCorrect) questionStats[qText].correct++;
+                        });
+                    }
+                });
+                const entries = Object.entries(questionStats);
+                // 截断长题目
+                const truncate = (str, maxLen = 28) => str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
+                const names = entries.map(([q]) => truncate(q));
+                const rates = entries.map(([, s]) => s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0);
+
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(17,22,51,0.95)',
+                        borderColor: '#2a2f4a',
+                        textStyle: { color: '#e0e6ff' },
+                        formatter: function(params) {
+                            return `${params[0].name}<br/>正确率：<b>${params[0].value}%</b>`;
+                        },
+                    },
+                    grid: { left: '4%', right: '8%', top: '6%', bottom: '6%', containLabel: true },
+                    xAxis: {
+                        type: 'value',
+                        name: '正确率(%)',
+                        min: 0,
+                        max: 100,
+                        nameTextStyle: { color: '#8892b0', fontSize: 11 },
+                        axisLine: { show: false },
+                        axisTick: { show: false },
+                        splitLine: { lineStyle: { color: 'rgba(42,47,74,0.4)' } },
+                        axisLabel: { color: '#8892b0', fontSize: 11 },
+                    },
+                    yAxis: {
+                        type: 'category',
+                        data: names,
+                        axisLine: { lineStyle: { color: '#2a2f4a' } },
+                        axisTick: { show: false },
+                        axisLabel: { color: '#e0e6ff', fontSize: 11 },
+                    },
+                    series: [{
+                        type: 'bar',
+                        data: rates.map(v => ({
+                            value: v,
+                            itemStyle: {
+                                color: v >= 80 ? '#43e97b' : v >= 50 ? '#ff9a56' : '#ff6b9d',
+                                borderRadius: [0, 6, 6, 0],
+                            },
+                        })),
+                        barWidth: '50%',
+                        label: {
+                            show: true,
+                            position: 'right',
+                            color: '#e0e6ff',
+                            fontSize: 12,
+                            formatter: '{c}%',
+                        },
+                    }],
+                };
+                chartQuestionAccuracyInstance.setOption(option, true);
+            }
+
+            // ==================== 详细对战记录表格 ====================
+            function updateTable() {
+                const subs = filteredSubmissions;
+                const tbody = document.getElementById('tableBody');
+                if (subs.length === 0) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="7"><div class="empty-state"><i class="far fa-folder-open"></i><span>暂无符合条件的数据</span></div></td></tr>';
+                    return;
+                }
+                let html = '';
+                subs.forEach(s => {
+                    const dt = new Date(s.timestamp || s.submitted_at);
+                    const timeStr = isNaN(dt.getTime()) ? (s.submitted_at || '--') :
+                        dt.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit',
+                            minute: '2-digit' });
+                    let totalQ = 0;
+                    let correctQ = 0;
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            totalQ++;
+                            if (log.isCorrect) correctQ++;
+                        });
+                    }
+                    const rate = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
+                    const rateClass = rate >= 80 ? 'badge-correct' : rate >= 50 ? 'badge-info' :
+                        'badge-wrong';
+                    html += `
+                        <tr>
+                            <td>${timeStr}</td>
+                            <td><strong>${escapeHtml(s.p1 || '--')}</strong></td>
+                            <td><strong>${escapeHtml(s.p2 || '--')}</strong></td>
+                            <td><span class="badge badge-win">🏆 ${escapeHtml(s.winner || '--')}</span></td>
+                            <td>${totalQ}</td>
+                            <td>${correctQ}</td>
+                            <td><span class="badge ${rateClass}">${rate}%</span></td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // ==================== AI 智能分析 ====================
+            window.openAiModal = function() {
+                const overlay = document.getElementById('aiModalOverlay');
+                overlay.classList.add('show');
+                startAiAnalysis();
+            };
+
+            window.closeAiModal = function() {
+                const overlay = document.getElementById('aiModalOverlay');
+                overlay.classList.remove('show');
+            };
+
+            window.startAiAnalysis = async function() {
+                const body = document.getElementById('aiModalBody');
+                body.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px 0; color: var(--accent-purple);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 32px; margin-bottom: 16px;"></i>
+                        <p>DeepSeek 正在深度分析筛选日期范围内的数据，请稍候...</p>
+                    </div>
+                `;
+
+                const totalPlayers = document.getElementById('statTotalPlayers').textContent;
+                const correctRate = document.getElementById('statCorrectRate').textContent;
+                const totalBattles = document.getElementById('statTotalBattles').textContent;
+                const totalQuestions = document.getElementById('statTotalQuestions').textContent;
+
+                const subs = filteredSubmissions || [];
+                let playerWins = {};
+                let qStats = {};
+                
+                subs.forEach(s => {
+                    if (s.winner) playerWins[s.winner] = (playerWins[s.winner] || 0) + 1;
+                    if (s.battleLog && Array.isArray(s.battleLog)) {
+                        s.battleLog.forEach(log => {
+                            const qText = log.questionText || '未知';
+                            if (!qStats[qText]) qStats[qText] = { c: 0, t: 0 };
+                            qStats[qText].t++;
+                            if (log.isCorrect) qStats[qText].c++;
+                        });
+                    }
+                });
+
+                const topPlayers = Object.entries(playerWins)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(e => `${e[0]}(${e[1]}胜)`)
+                    .join(', ');
+
+                const hardQs = Object.entries(qStats)
+                    .map(([q, s]) => ({ q, rate: s.t > 0 ? Math.round(s.c / s.t * 100) : 0 }))
+                    .sort((a, b) => a.rate - b.rate)
+                    .slice(0, 3)
+                    .map(e => `${e.q}(${e.rate}%)`)
+                    .join('; ');
+
+                const prompt = `您是一位资深的数据分析专家。请根据以下“单选题对战游戏”平台数据，给出结构化的分析报告。
+要求输出包含三个模块：### 业务洞察、### 问题诊断、### 优化建议。请使用 Markdown 格式排版，不要废话，直接输出结论。
+
+**当前数据概况：**
+- 参与玩家数：${totalPlayers}
+- 整体正确率：${correctRate}
+- 总对战场次：${totalBattles}
+- 总答题数量：${totalQuestions}
+- 胜场表现抢眼玩家（前3）：${topPlayers || '暂无'}
+- 玩家易错题目（正确率低的前3）：${hardQs || '暂无'}
+`;
+
+                const API_KEY = 'sk-3814cdbf911d4a51ad082a9dc6aee302';
+                
+                try {
+                    const response = await fetch('https://api.deepseek.com/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'deepseek-chat',
+                            messages: [
+                                { role: 'system', content: '你是游戏数据分析专家，请根据提供的数据给出结构化分析报告。' },
+                                { role: 'user', content: prompt }
+                            ],
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`API 请求失败: ${response.status}`);
+                    
+                    const resData = await response.json();
+                    let aiText = resData.choices[0].message.content;
+                    
+                    // 简单的 Markdown 转换以适配当前容器
+                    aiText = aiText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    aiText = aiText.replace(/### (.*?)\n/g, '<h3>$1</h3>');
+                    aiText = aiText.replace(/\n- (.*?)/g, '<br/>• $1');
+                    aiText = aiText.replace(/\n/g, '<br/>');
+
+                    body.innerHTML = aiText;
+                } catch (error) {
+                    body.innerHTML = `<div style="color:var(--accent-pink); text-align:center; padding: 20px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:24px; margin-bottom:10px;"></i>
+                        <p>分析失败，请检查网络或 API Key 状态。</p>
+                        <p style="font-size:12px; margin-top:10px;">错误信息: ${error.message}</p>
+                    </div>`;
+                }
+            };
+
+            // ==================== 暴露到全局 ====================
+            window.applyDateFilter = applyDateFilter;
+            window.resetDateFilter = resetDateFilter;
+
+            // ==================== 启动 ====================
+            document.addEventListener('DOMContentLoaded', init);
+
+            // 每60秒自动刷新数据
+            setInterval(() => {
+                fetchData();
+            }, 60000);
+        })();
+    </script>
+</body>
+</html>

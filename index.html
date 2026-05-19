@@ -1,0 +1,3351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英雄大乱斗</title>
+    <link rel="icon" href="resource/1.ico" type="image/x-icon">
+    <style>
+        /* =========================================
+         *  核心样式 & 像素风重置
+         * ========================================= */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg-color: #202028;
+            --p1-color: #ff0055;
+            --p2-color: #00e5ff;
+            --ui-border: #fff;
+            --pixel-size: 4px;
+            --teacher-color: #ffd700;
+            --success-color: #00ff00;
+            --error-color: #ff0000;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 非像素风格字体设置 */
+        #question-display, #quiz-modal, .quiz-title, .option-btn {
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* 像素化渲染核心 */
+        img, canvas {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* 游戏主容器 */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            max-width: 1280px;
+            max-height: 800px;
+            position: relative;
+            background: var(--bg-color);
+            border: 4px solid #444;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        /* 通用按钮风格 */
+        .pixel-btn {
+            background: #444;
+            border: 4px solid #000;
+            color: #fff;
+            padding: 15px 20px;
+            font-family: inherit;
+            font-size: 16px;
+            text-transform: uppercase;
+            box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: inset -1px -1px 0px 0px rgba(0,0,0,0.5);
+        }
+        .pixel-btn:hover {
+            background: #666;
+        }
+
+        /* 屏幕切换 */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* =========================================
+         *  特效层：CRT 扫描线
+         * ========================================= */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 99999;
+            animation: flicker 0.15s infinite;
+        }
+        
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            100% { opacity: 1; }
+        }
+
+        /* =========================================
+         *  Screen 1: 角色选择
+         * ========================================= */
+        #char-select-screen {
+            background: linear-gradient(45deg, #111, #222);
+        }
+        
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin: 20px;
+            background: #000;
+            padding: 10px;
+            border: 4px solid #fff;
+            max-height: 350px;
+            overflow: hidden;
+        }
+        
+        .expand-btn {
+            display: block;
+            margin: 10px auto;
+            padding: 8px 16px;
+            font-size: 12px;
+            background: #444;
+            border: 2px solid #fff;
+            color: #fff;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .expand-btn:hover {
+            background: #666;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #111;
+            border: 4px solid #fff;
+            width: 98%;
+            max-width: 100%;
+            max-height: 98vh;
+            height: 98vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 2px solid #fff;
+            background: #222;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #fff;
+            font-size: 18px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            flex: 1;
+            padding: 15px;
+            overflow: hidden;
+        }
+        
+        /* 更新日志样式 */
+        .changelog-content {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            line-height: 1.6;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .changelog-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .changelog-content::-webkit-scrollbar-track {
+            background: #333;
+        }
+        
+        .changelog-content::-webkit-scrollbar-thumb {
+            background: var(--teacher-color);
+            border-radius: 4px;
+        }
+        
+        .changelog-item {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .changelog-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .changelog-version {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--teacher-color);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .changelog-date {
+            font-size: 12px;
+            color: #999;
+            font-weight: normal;
+        }
+        
+        .changelog-changes {
+            list-style: none;
+            padding-left: 20px;
+        }
+        
+        .changelog-changes li {
+            margin-bottom: 5px;
+            position: relative;
+            color: #eee;
+        }
+        
+        .changelog-changes li::before {
+            content: '•';
+            color: var(--teacher-color);
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+        
+        .changelog-changes li.feature {
+            color: #28a745;
+        }
+        
+        .changelog-changes li.bugfix {
+            color: #dc3545;
+        }
+        
+        .changelog-changes li.improvement {
+            color: #17a2b8;
+        }
+        
+        .hero-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        
+        /* 滑动按钮样式 */
+        .scroll-btn {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid var(--teacher-color);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+        
+        .scroll-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        
+        .scroll-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .scroll-up {
+            top: 10px;
+            right: 10px;
+        }
+        
+        .scroll-down {
+            bottom: 10px;
+            right: 10px;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 800px) {
+            .scroll-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+        
+        .hero-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .hero-grid::-webkit-scrollbar-track {
+            background: #333;
+        }
+        
+        .hero-grid::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+        
+        .hero-grid::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        .hero-slot {
+            width: 100%;
+            height: 120px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        
+        .hero-slot:hover {
+            border-color: #fff;
+        }
+        
+        .hero-slot img {
+            max-width: 90%;
+            max-height: 90px;
+        }
+        
+        .hero-slot .hero-name {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            font-size: 8px;
+            color: #fff;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 0;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .hero-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .modal-content {
+                width: 95%;
+            }
+        }
+
+        .char-slot {
+            width: 100%;
+            height: 90px;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            margin-bottom: 20px; /* 增加底部空间显示角色名称 */
+        }
+        
+        .char-slot img { width: 100%; height: 100%; object-fit: contain; }
+
+        .char-slot:hover { border-color: #fff; background: #555; }
+
+        .char-slot.selected-p1 { border: 4px solid var(--p1-color); box-shadow: 0 0 10px var(--p1-color); }
+        .char-slot.selected-p2 { border: 4px solid var(--p2-color); box-shadow: 0 0 10px var(--p2-color); }
+        
+        .char-slot.locked { opacity: 0.3; pointer-events: none; }
+
+        .upload-input { display: none; }
+
+        /* =========================================
+         *  Screen 2: VS 过场
+         * ========================================= */
+        #vs-screen { background: #000; }
+        
+        .vs-container { display: flex; width: 100%; height: 100%; position: relative; }
+        
+        .vs-side {
+            width: 50%; height: 100%; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; position: relative;
+        }
+        
+        .vs-side.p1 { background: linear-gradient(to right, #300, #000); }
+        .vs-side.p2 { background: linear-gradient(to left, #003, #000); }
+
+        .vs-char-img { width: 300px; height: 300px; object-fit: contain; }
+        
+        .vs-side.p1 .vs-char-img { animation: slideInLeft 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards; }
+        .vs-side.p2 .vs-char-img { transform: scaleX(-1); animation: slideInRight 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards; }
+
+        .vs-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 100px; color: #ffcc00; text-shadow: 4px 4px 0 #ff0000, 8px 8px 0 #fff;
+            z-index: 100; animation: vsPop 0.5s 0.6s forwards, vsShake 0.2s 1.1s infinite;
+        }
+
+        /* =========================================
+         *  Screen 3: 战斗界面
+         * ========================================= */
+        #battle-screen {
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+                repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,255,255,0.05) 21px),
+                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0,255,255,0.05) 21px);
+            background-color: #1a1a24;
+        }
+        
+        /* HUD 血条 */
+        .hud-top {
+            position: absolute; top: 20px; width: 90%; display: flex;
+            justify-content: space-between; align-items: center; z-index: 50;
+        }
+
+        .health-bar-container {
+            width: 40%; height: 30px; background: #333; border: 4px solid #fff; position: relative;
+        }
+
+        .health-fill {
+            height: 100%; width: 100%; background: #0f0; transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .p1-hp .health-fill { background: var(--p1-color); }
+        .p2-hp .health-fill { background: var(--p2-color); }
+        
+        /* 战斗角色 */
+        .fighter-container {
+            position: absolute; bottom: 0; width: 350px; height: 80%; /* 增加高度，减少宽度 */
+            display: flex; justify-content: center; align-items: flex-end; transition: transform 0.2s;
+        }
+        
+        .fighter-container img {
+            width: 100%; height: 100%; object-fit: contain;
+            animation: idle 1.5s infinite ease-in-out;
+            object-position: bottom; /* 图片底部对齐，减少底部留白 */
+        }
+
+        #fighter-p1 { left: 5%; }
+        #fighter-p2 { right: 5%; transform: scaleX(-1); }
+
+        /* 题目展示区 - 抢答前 */
+        #question-display {
+                position: absolute; top: 15%; width: 60%; background: rgba(0,0,0,0.8);
+                border: 4px solid #666; padding: 25px; text-align: center;
+                font-size: 30px; line-height: 1.6; z-index: 40; box-shadow: 0 4px 0 #333;
+                font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+                font-weight: 600;
+                color: #fff;
+            }
+
+        /* 抢答按钮 */
+        .buzz-btn {
+            position: fixed; bottom: 20px; width: 120px; height: 120px; border-radius: 50%;
+            border: 8px solid #fff; font-size: 18px; font-weight: bold; z-index: 9999;
+            cursor: pointer; display: flex; justify-content: center; align-items: center; flex-direction: column;
+            box-shadow: 0 10px 0 #000; transition: all 0.1s;
+        }
+        .buzz-btn small { font-size: 10px; margin-top: 5px; opacity: 0.8; }
+        
+        #buzz-p1 { left: 30px; background: var(--p1-color); }
+        #buzz-p1:active, #buzz-p1.active { transform: translateY(10px); box-shadow: 0 0 0 #000; }
+        
+        #buzz-p2 { right: 30px; background: var(--p2-color); }
+        #buzz-p2:active, #buzz-p2.active { transform: translateY(10px); box-shadow: 0 0 0 #000; }
+        
+        .buzz-btn.disabled { opacity: 0.3; filter: grayscale(1); pointer-events: none; }
+
+        /* 答题模态框 */
+        #quiz-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 95%; max-width: 1100px; max-height: 80vh; background: rgba(0,0,80,0.95);
+            border: 8px solid #00e5ff; z-index: 10000; display: none; flex-direction: column;
+            padding: 35px; box-shadow: 0 0 60px rgba(0,229,255,0.5);
+            overflow: hidden;
+        }
+
+        /* 答题模态框内容区域 - 可滚动 */
+        #quiz-modal-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 10px;
+            margin-top: 15px;
+        }
+
+        #quiz-modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #quiz-modal-content::-webkit-scrollbar-track {
+            background: #222;
+        }
+
+        #quiz-modal-content::-webkit-scrollbar-thumb {
+            background: #00e5ff;
+            border-radius: 4px;
+        }
+        .modal-active { display: flex !important; animation: popIn 0.3s; }
+
+        .quiz-title {
+            font-size: 36px; margin-bottom: 35px; color: #ffcc00; text-align: center;
+            border-bottom: 2px dashed #fff; padding-bottom: 15px;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 700;
+            word-wrap: break-word;
+        }
+
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+
+        .option-btn {
+            background: #222; border: 4px solid #555; color: #fff; font-size: 24px;
+            cursor: pointer; padding: 20px; text-align: left; transition: background 0.2s;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 500;
+        }
+        .option-btn:hover { background: #444; border-color: #fff; }
+
+        .question-content {
+            font-size: 28px;
+            line-height: 1.5;
+            color: #fff;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 500;
+        }
+
+        /* 滚动控制按钮 */
+        .scroll-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #444;
+        }
+
+        .scroll-btn {
+            background: #333;
+            border: 4px solid #555;
+            color: #fff;
+            font-size: 24px;
+            padding: 15px 30px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .scroll-btn:hover {
+            background: #555;
+            border-color: #fff;
+        }
+
+        /* 答题权获取提示 */
+        .buzz-notification {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.98); border: 8px solid;
+            padding: 80px 100px; font-size: 56px; font-weight: bold;
+            text-align: center; z-index: 10001; box-shadow: 0 0 80px;
+            animation: buzzNotification 1.5s forwards;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            border-radius: 20px;
+        }
+
+        @keyframes buzzNotification {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            70% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+        
+        /* 攻击元素样式 */
+        .attack-element {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        /* 火球样式 */
+        .fireball {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff6600 0%, #ff3300 50%, transparent 70%);
+            border-radius: 50%;
+            box-shadow: 0 0 20px #ff3300, 0 0 40px #ff6600;
+        }
+        
+        /* 雷电样式 */
+        .lightning {
+            width: 8px;
+            height: 200px;
+            background: linear-gradient(to bottom, #ffff00, #00ffff, #ffffff);
+            box-shadow: 0 0 10px #00ffff, 0 0 20px #ffff00;
+            filter: blur(1px);
+        }
+        
+        /* 冰冻样式 */
+        .ice {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #00ffff 0%, #0099ff 50%, transparent 70%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #00ffff, 0 0 30px #0099ff;
+            border: 2px solid #ffffff;
+        }
+        
+        /* 爆炸效果样式 */
+        .explosion-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffffff 0%, #ff6600 30%, #ff3300 60%, transparent 100%);
+            pointer-events: none;
+            z-index: 60;
+        }
+        
+        /* 闪光效果样式 */
+        .flash-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 55;
+        }
+
+        .turn-indicator {
+            position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+            background: #ffcc00; color: #000; padding: 10px 20px; font-size: 16px; white-space: nowrap;
+            font-weight: bold; border: 4px solid #000; box-shadow: 0 4px 0 #000;
+            z-index: 10001;
+        }
+        
+        /* 键盘提示 */
+        .key-hint {
+            position: absolute; bottom: 150px; font-size: 12px; color: #aaa; opacity: 0.5;
+        }
+        .key-hint-p1 { left: 40px; }
+        .key-hint-p2 { right: 40px; }
+
+        /* =========================================
+         *  Screen 4: 教师控制面板
+         * ========================================= */
+        #teacher-panel-screen { 
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            overflow-y: auto;
+            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        
+        #teacher-panel-screen.active {
+            display: block; /* 覆盖 flex 避免超长内容强制居中时顶部被截去 */
+        }
+        
+        .panel-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--teacher-color);
+            font-size: 24px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .panel-header h1 {
+            margin: 0;
+        }
+        
+        .panel-section {
+            background: rgba(0,0,0,0.5);
+            border: 4px solid var(--teacher-color);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel-section h3 {
+            color: var(--teacher-color);
+            margin-top: 0;
+            border-bottom: 2px solid var(--teacher-color);
+            padding-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .question-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .question-item {
+            background: #222;
+            border: 2px solid #444;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .question-item:hover {
+            border-color: var(--teacher-color);
+        }
+        
+        .question-text {
+            flex: 1;
+            font-size: 12px;
+            color: #fff;
+        }
+        
+        .question-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 8px;
+            background: #444;
+            border: 2px solid #666;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .btn-small:hover {
+            background: #666;
+        }
+        
+        .btn-edit { border-color: #00e5ff; }
+        .btn-delete { border-color: #ff0055; }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+            font-size: 10px;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            background: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+        }
+        
+        .form-group textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        
+        .options-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #222;
+            border: 2px solid #444;
+            margin-bottom: 10px;
+        }
+        
+        .setting-row label {
+            font-size: 10px;
+            color: #fff;
+        }
+        
+        .setting-row input[type="number"],
+        .setting-row select {
+            width: 100px;
+            padding: 5px;
+            background: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+        }
+        
+        .bank-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .bank-btn {
+            padding: 10px 15px;
+            background: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        
+        .bank-btn.active {
+            border-color: var(--teacher-color);
+            background: #555;
+        }
+        
+        .bank-btn:hover {
+            border-color: #888;
+        }
+        
+        /* =========================================
+         *  Screen 5: 结算
+         * ========================================= */
+        #game-over-screen { background: #111; }
+        
+        .winner-avatar {
+            width: 200px; height: 200px; border: 8px solid gold; margin-bottom: 20px;
+            animation: zoomBeat 2s infinite; background: #333;
+        }
+
+        /* =========================================
+         *  Screen 6: 教师评讲模式
+         * ========================================= */
+        #review-screen {
+            background-color: #202028;
+            overflow-y: auto;
+            align-items: flex-start; /* 顶部对齐 */
+            padding: 40px;
+        }
+
+        .review-header {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 4px solid var(--teacher-color);
+            padding-bottom: 20px;
+        }
+
+        .review-container {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: 70vh;
+        }
+
+        .review-list {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #555;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .review-item {
+            padding: 15px;
+            background: #333;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .review-item:hover {
+            background: #444;
+            transform: translateX(5px);
+        }
+
+        .review-item.active {
+            border-color: var(--teacher-color);
+            background: #444;
+        }
+
+        .review-item.correct { border-left: 5px solid var(--success-color); }
+        .review-item.wrong { border-left: 5px solid var(--error-color); }
+
+        .review-detail {
+            background: #222;
+            border: 4px solid #fff;
+            padding: 30px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .detail-q {
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 500;
+        }
+
+        .detail-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .detail-opt {
+            padding: 15px;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 20px;
+            line-height: 1.4;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 400;
+        }
+
+        .detail-opt.is-correct {
+            border-color: var(--success-color);
+            color: var(--success-color);
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .detail-opt.is-wrong-choice {
+            border-color: var(--error-color);
+            color: var(--error-color);
+            background: rgba(255, 0, 0, 0.1);
+            text-decoration: line-through;
+        }
+
+        .analysis-box {
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px dashed var(--teacher-color);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .analysis-title {
+            color: var(--teacher-color);
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 动画定义 */
+        @keyframes idle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        
+        @keyframes slideInLeft { from { transform: translateX(-150%); } to { transform: translateX(0); } }
+        @keyframes slideInRight { from { transform: translateX(150%) scaleX(-1); } to { transform: translateX(0) scaleX(-1); } }
+        
+        @keyframes vsPop { 0% { transform: translate(-50%, -50%) scale(0); } 80% { transform: translate(-50%, -50%) scale(1.5); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        
+        @keyframes flashRed { 0% { filter: brightness(1) sepia(1) hue-rotate(-50deg) saturate(5); } 50% { filter: brightness(5); } 100% { filter: brightness(1); } }
+        @keyframes flashGreen { 0% { filter: brightness(1); } 50% { filter: brightness(2) drop-shadow(0 0 10px #0f0); } 100% { filter: brightness(1); } }
+
+        @keyframes shake { 
+            0% { transform: translate(0,0); } 20% { transform: translate(-4px, 4px); } 
+            40% { transform: translate(4px, -4px); } 60% { transform: translate(-4px, -4px); } 
+            80% { transform: translate(4px, 4px); } 100% { transform: translate(0,0); }
+        }
+        
+        @keyframes attackP1 { 0% { transform: translateX(0); } 50% { transform: translateX(200px); } 100% { transform: translateX(0); } }
+        @keyframes attackP2 { 0% { transform: scaleX(-1) translateX(0); } 50% { transform: scaleX(-1) translateX(200px); } 100% { transform: scaleX(-1) translateX(0); } }
+        
+        /* 火球攻击动画 */
+        @keyframes fireballP1 {
+            0% { left: 20%; opacity: 1; transform: scale(0.5); }
+            50% { left: 50%; opacity: 1; transform: scale(1); }
+            100% { left: 80%; opacity: 0; transform: scale(1.5); }
+        }
+        
+        @keyframes fireballP2 {
+            0% { right: 20%; opacity: 1; transform: scale(0.5); }
+            50% { right: 50%; opacity: 1; transform: scale(1); }
+            100% { right: 80%; opacity: 0; transform: scale(1.5); }
+        }
+        
+        /* 雷电攻击动画 */
+        @keyframes lightningP1 {
+            0% { left: 20%; opacity: 0; }
+            20% { left: 50%; opacity: 1; }
+            40% { left: 50%; opacity: 0; }
+            60% { left: 50%; opacity: 1; }
+            80% { left: 50%; opacity: 0; }
+            100% { left: 80%; opacity: 0; }
+        }
+        
+        @keyframes lightningP2 {
+            0% { right: 20%; opacity: 0; }
+            20% { right: 50%; opacity: 1; }
+            40% { right: 50%; opacity: 0; }
+            60% { right: 50%; opacity: 1; }
+            80% { right: 50%; opacity: 0; }
+            100% { right: 80%; opacity: 0; }
+        }
+        
+        /* 冰冻攻击动画 */
+        @keyframes iceP1 {
+            0% { left: 20%; opacity: 0; transform: scale(0.3) rotate(0deg); }
+            50% { left: 50%; opacity: 1; transform: scale(1) rotate(180deg); }
+            100% { left: 80%; opacity: 0; transform: scale(1.5) rotate(360deg); }
+        }
+        
+        @keyframes iceP2 {
+            0% { right: 20%; opacity: 0; transform: scale(0.3) rotate(0deg); }
+            50% { right: 50%; opacity: 1; transform: scale(1) rotate(180deg); }
+            100% { right: 80%; opacity: 0; transform: scale(1.5) rotate(360deg); }
+        }
+        
+        /* 爆炸效果 */
+        @keyframes explosion {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(2); opacity: 0.8; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        /* 闪光效果 */
+        @keyframes flash {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            40% { opacity: 0; }
+            60% { opacity: 1; }
+            80% { opacity: 0; }
+            100% { opacity: 0; }
+        }
+        
+        /* 震动效果 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10% { transform: translateX(-10px); }
+            20% { transform: translateX(10px); }
+            30% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            50% { transform: translateX(-5px); }
+            60% { transform: translateX(5px); }
+            70% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+            90% { transform: translateX(-1px); }
+        }
+
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+        @keyframes zoomBeat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.5); opacity:0; } 100% { transform: translate(-50%, -50%) scale(1); opacity:1; } }
+
+        /* 响应式微调 */
+        @media (max-width: 1024px) {
+            .char-grid { grid-template-columns: repeat(3, 1fr); padding: 5px; }
+            .char-slot { width: 120px; height: 90px; }
+        }
+        
+        @media (max-width: 800px) {
+            .char-grid { grid-template-columns: repeat(2, 1fr); padding: 5px; }
+            .char-slot { width: 90px; height: 67px; }
+            .buzz-btn { width: 80px; height: 80px; bottom: 10px; font-size: 14px; }
+            #buzz-p1 { left: 10px; } #buzz-p2 { right: 10px; }
+            .fighter-container { width: 120px; }
+            .vs-text { font-size: 60px; }
+            .hud-top { flex-direction: column; width: 100%; top: 5px; }
+            .health-bar-container { width: 80%; margin: 2px; }
+            #question-display { top: 70px; width: 90%; font-size: 14px; padding: 10px; }
+            .key-hint { display: none; } /* 移动端不显键盘提示 */
+            
+            /* 移动端答题模态框优化 */
+            #quiz-modal {
+                width: 98%;
+                max-height: 90vh;
+                padding: 15px;
+            }
+            .quiz-title { font-size: 20px; margin-bottom: 15px; }
+            .option-btn { font-size: 18px; padding: 15px; }
+            .turn-indicator { font-size: 14px; padding: 8px; }
+        }
+        
+        /* 希沃白板环境优化 */
+        @media (aspect-ratio: 4/3) {
+            /* 4:3 显示比例优化 */
+            #quiz-modal {
+                width: 90%;
+                max-width: 1024px;
+                max-height: 70vh;
+            }
+            
+            .quiz-title {
+                font-size: 32px;
+            }
+            
+            .option-btn {
+                font-size: 24px;
+                padding: 20px;
+            }
+        }
+        
+        @media (aspect-ratio: 16/9) {
+            /* 16:9 显示比例优化 */
+            #quiz-modal {
+                width: 85%;
+                max-width: 1280px;
+                max-height: 75vh;
+            }
+        }
+        
+        /* 大屏幕希沃白板优化 */
+        @media (min-width: 1920px) {
+            #quiz-modal {
+                max-width: 1400px;
+                padding: 50px;
+            }
+            
+            .quiz-title {
+                font-size: 48px;
+                margin-bottom: 40px;
+            }
+            
+            .option-btn {
+                font-size: 32px;
+                padding: 30px;
+            }
+            
+            .buzz-notification {
+                font-size: 64px;
+                padding: 80px 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="crt-overlay"></div>
+
+    <div id="game-container">
+        
+        <!-- ==================== 1. 角色选择屏幕 ==================== -->
+        <div id="char-select-screen" class="screen active">
+            <audio id="select-music" loop muted>
+                <source src="resource/4.mp3" type="audio/mpeg">
+                您的浏览器不支持音频播放。
+              </audio>
+            <h1 style="color:yellow; text-shadow:4px 4px #f00; font-size: 24px; text-align:center;">英雄大乱斗</h1>
+            <h3 id="select-status" style="margin: 20px 0; color: #0ff;">PLAYER 1 选择英雄</h3>
+            
+            <!-- 玩家选择展示区域 -->
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; width: 100%; max-width: 500px;">
+                <div style="text-align: center; width: 150px;">
+                    <div style="font-size: 12px; color: var(--p1-color); margin-bottom: 5px;">PLAYER 1</div>
+                    <div id="p1-char-display" style="width: 100px; height: 100px; background: #333; border: 4px solid var(--p1-color); display: flex; justify-content: center; align-items: center; margin: 0 auto;">
+                        <div style="color: #666; font-size: 10px;">选择角色</div>
+                    </div>
+                </div>
+                <div style="text-align: center; width: 150px;">
+                    <div style="font-size: 12px; color: var(--p2-color); margin-bottom: 5px;">PLAYER 2</div>
+                    <div id="p2-char-display" style="width: 100px; height: 100px; background: #333; border: 4px solid var(--p2-color); display: flex; justify-content: center; align-items: center; margin: 0 auto;">
+                        <div style="color: #666; font-size: 10px;">选择角色</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="char-grid" id="char-grid"></div>
+            <button class="expand-btn" id="view-all-btn">查看所有英雄</button>
+            
+            <!-- 英雄选择模态框 -->
+            <div id="hero-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>所有可用英雄</h2>
+                        <button class="modal-close" id="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- 上滑按钮 -->
+                        <button class="scroll-btn scroll-up" id="scroll-up-btn">↑</button>
+                        <!-- 英雄网格 -->
+                        <div class="hero-grid" id="hero-grid"></div>
+                        <!-- 下滑按钮 -->
+                        <button class="scroll-btn scroll-down" id="scroll-down-btn">↓</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 更新日志模态框 -->
+            <div id="changelog-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>📋 更新日志  <span style="font-family: 'SimSun', '宋体', serif; font-style: normal;">©czt</span></h2>
+                        <button class="modal-close" id="changelog-modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="changelog-content" id="changelog-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 音效配置模态框 -->
+            <div id="sound-config-modal" class="modal">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h2>🎵 英雄音效配置</h2>
+                        <button class="modal-close" id="sound-config-modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="font-size:12px; color:#aaa; margin-bottom:10px;">为角色配置专属的进攻/答错音效(本地音频)。红框表示已配置本机音频。蓝框为系统自带。保存配置后生效。</div>
+                        <div id="hero-sound-config-list" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; max-height:60vh; overflow-y:auto; padding:10px; background:#222; border:2px solid #444;"></div>
+                        <input type="file" id="hero-sound-upload" accept="audio/*" style="display:none;">
+                        <div style="display:flex; gap:10px; margin-top: 15px;">
+                            <button class="pixel-btn" id="clear-sounds-btn" style="font-size: 10px; padding: 10px; flex:1; background: #660000;">清空所有自定义音效</button>
+                            <button class="pixel-btn" id="save-sounds-btn" style="font-size: 10px; padding: 10px; flex:2; background: #006600;">保存所有配置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; text-align:center;">
+                <button class="pixel-btn" id="upload-btn" style="font-size: 10px; padding: 10px;">+ 上传图片</button>
+                <input type="file" id="json-upload" class="upload-input" accept="image/*">
+                <button class="pixel-btn" id="import-question-btn" style="font-size: 10px; padding: 10px; margin-left: 10px;">+ 导入题库</button>
+                <input type="file" id="question-upload" class="upload-input" accept=".json">
+                <button class="pixel-btn" id="teacher-panel-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #665500; border-color: var(--teacher-color);">🎓 教师面板</button>
+                <button class="pixel-btn" id="sound-config-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #006666; border-color: var(--teacher-color);">🎵 音效配置</button>
+                <button class="pixel-btn" id="volume-config-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #cc5500; border-color: var(--teacher-color);">🔊 音量调节</button>
+                <button class="pixel-btn" id="changelog-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #663366; border-color: var(--teacher-color);">📋 更新日志</button>
+                <button class="pixel-btn" id="usage-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #336699; border-color: var(--teacher-color);" onclick="window.open('使用说明/使用说明.html', '_blank');">📘 使用说明</button>
+                <button class="pixel-btn" id="usage-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #495d70; border-color: var(--teacher-color);" onclick="window.open('使用说明/题库生成器.html', '_blank');">💯 出题</button>
+                <button class="pixel-btn" id="data-screen-btn" style="font-size: 10px; padding: 10px; margin-left: 10px; background: #006633; border-color: var(--teacher-color);" onclick="window.open('数据大屏.html', '_blank');">📊 数据大屏</button>
+
+            </div>
+
+            <!-- 音量调节模态框 -->
+            <div id="volume-config-modal" class="modal">
+                <div class="modal-content" style="max-width: 500px; height: auto; max-height: 80vh;">
+                    <div class="modal-header">
+                        <h2>🔊 音量调节</h2>
+                        <button class="modal-close" id="volume-config-modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px;">
+                                <span>🎵 选角 BGM 音量</span>
+                                <span id="val-vol-select">100%</span>
+                            </div>
+                            <input type="range" id="vol-select-bgm" min="0" max="1" step="0.01" value="1" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px;">
+                                <span>⚔️ 战斗 BGM 音量</span>
+                                <span id="val-vol-battle">100%</span>
+                            </div>
+                            <input type="range" id="vol-battle-bgm" min="0" max="1" step="0.01" value="1" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px;">
+                                <span>💥 系统及自带攻/胜音效</span>
+                                <span id="val-vol-sfx">100%</span>
+                            </div>
+                            <input type="range" id="vol-sfx" min="0" max="1" step="0.01" value="1" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px;">
+                                <span>🗣️ 英雄专属答错/攻击语音</span>
+                                <span id="val-vol-hero">250%</span>
+                            </div>
+                            <input type="range" id="vol-hero-audio" min="0" max="3" step="0.01" value="2.5" style="width: 100%; cursor: pointer;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 2. VS 过场屏幕 ==================== -->
+        <div id="vs-screen" class="screen">
+            <div class="vs-container">
+                <div class="vs-side p1"><img id="vs-img-p1" class="vs-char-img" src=""></div>
+                <div class="vs-side p2"><img id="vs-img-p2" class="vs-char-img" src=""></div>
+            </div>
+            <div class="vs-text">VS</div>
+        </div>
+
+        <!-- ==================== 3. 战斗屏幕 ==================== -->
+        <div id="battle-screen" class="screen">
+            <audio id="battle-music" loop>
+                <source src="resource/bgm.mp3" type="audio/mpeg">
+                您的浏览器不支持音频播放。
+              </Audio>
+            <audio id="attack-sound">
+                <source src="resource/1.mp3" type="audio/mpeg">
+                您的浏览器不支持音频播放。
+              </Audio>
+            <audio id="win-sound">
+                <source src="resource/3.mp3" type="audio/mpeg">
+                您的浏览器不支持音频播放。
+              </Audio>
+            <div class="hud-top">
+                <div class="health-bar-container p1-hp">
+                    <div id="hp-bar-p1" class="health-fill" style="width: 100%;"></div>
+                    <span style="position: absolute; top:5px; left:10px; z-index:2; text-shadow:1px 1px #000;">P1</span>
+                </div>
+                <div style="font-size: 20px; font-weight:bold; color:#fff;">FIGHT</div>
+                <div class="health-bar-container p2-hp">
+                    <div id="hp-bar-p2" class="health-fill" style="width: 100%;"></div>
+                    <span style="position: absolute; top:5px; right:10px; z-index:2; text-shadow:1px 1px #000;">P2</span>
+                </div>
+            </div>
+
+            <div id="question-display">
+                <h3 id="q-text" style="margin:0; color:#fff; font-size: 32px; font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; font-weight: 600;">等待抢答...</h3>
+                <div id="q-options-preview" style="margin-top:20px; font-size: 24px; color:#fff; text-align:center; font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; font-weight: 500;"></div>
+            </div>
+
+            <div id="fighter-p1" class="fighter-container"><img id="battle-img-p1" src=""></div>
+            <div id="fighter-p2" class="fighter-container"><img id="battle-img-p2" src=""></div>
+
+            <div class="key-hint key-hint-p1">[A] 键 / 点击</div>
+            <button id="buzz-p1" class="buzz-btn">P1<small>READY</small></button>
+            
+            <div class="key-hint key-hint-p2">[L] 键 / 点击</div>
+            <button id="buzz-p2" class="buzz-btn">P2<small>READY</small></button>
+
+            <!-- 答题框 -->
+            <div id="quiz-modal">
+                <div class="turn-indicator" id="modal-turn-indicator"></div>
+                <div id="quiz-modal-content">
+                    <div class="quiz-title" id="modal-question-text"></div>
+                    <div class="quiz-options" id="modal-options"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 4. 教师控制面板 ==================== -->
+        <div id="teacher-panel-screen" class="screen">
+            <!-- 触屏滑动辅助按钮 -->
+            <div id="teacher-scroll-up" class="scroll-btn scroll-up" style="position: fixed; top: 20px; right: 20px; z-index: 1050; border-color: #fff;">▲</div>
+            <div id="teacher-scroll-down" class="scroll-btn scroll-down" style="position: fixed; bottom: 20px; right: 20px; z-index: 1050; border-color: #fff;">▼</div>
+
+            <div class="panel-container">
+                <div class="panel-header">
+                    <h1>🎓 教师控制面板</h1>
+                </div>
+                
+                <!-- 题库管理 -->
+                <div class="panel-section">
+                    <h3>📚 题库管理</h3>
+                    
+                    <div class="bank-selector" id="bank-selector">
+                        <button class="bank-btn active" data-bank="default">默认题库</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px;">
+                        <button class="pixel-btn" id="new-bank-btn" style="font-size: 12px; padding: 12px;">+ 新建题库</button>
+                        <button class="pixel-btn" id="export-bank-btn" style="font-size: 12px; padding: 12px; background: #006666;">📤 导出题库</button>
+                        <button class="pixel-btn" id="delete-bank-btn" style="font-size: 12px; padding: 12px; background: #660000;">删除当前题库</button>
+                        <button class="pixel-btn" id="back-to-select" style="font-size: 12px; padding: 12px; background: #336699;">🏠 返回首页</button>
+                    </div>
+                    
+                    <div class="question-list" id="question-list"></div>
+                    
+                    <button class="pixel-btn" id="add-question-btn" style="font-size: 12px; padding: 12px; width: 100%;">+ 添加新题目</button>
+                </div>
+                
+                <!-- 题目编辑表单 -->
+                <div class="panel-section" id="question-form" style="display: none;">
+                    <h3 id="form-title">➕ 添加题目</h3>
+                    
+                    <div class="form-group">
+                        <label>题目内容：</label>
+                        <textarea id="q-input" placeholder="请输入题目内容..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>选项：</label>
+                        <div class="options-input">
+                            <input type="text" id="opt-0" placeholder="选项 A">
+                            <input type="text" id="opt-1" placeholder="选项 B">
+                            <input type="text" id="opt-2" placeholder="选项 C">
+                            <input type="text" id="opt-3" placeholder="选项 D">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>正确答案：</label>
+                        <select id="answer-select">
+                            <option value="0">选项 A</option>
+                            <option value="1">选项 B</option>
+                            <option value="2">选项 C</option>
+                            <option value="3">选项 D</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>题目解析（选填）：</label>
+                        <textarea id="q-analysis" placeholder="请输入题目解析或知识点..."></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="pixel-btn" id="save-question-btn" style="font-size: 10px; padding: 8px; flex: 1; background: #006600;">保存</button>
+                        <button class="pixel-btn" id="cancel-question-btn" style="font-size: 10px; padding: 8px; flex: 1; background: #660000;">取消</button>
+                    </div>
+                </div>
+                
+                <!-- 游戏设置 -->
+                <div class="panel-section">
+                    <h3>⚙️ 游戏设置</h3>
+                    
+                    <!-- 每题答题时间设置：默认30秒，范围5-120秒 
+                    <div class="setting-row">
+                        <label>每题答题时间（秒）：</label>
+                        <input type="number" id="answer-time" value="30" min="5" max="120">
+                    </div>-->
+                    
+                    <div class="setting-row">
+                        <label>答对伤害值：</label>
+                        <input type="number" id="correct-damage" value="25" min="10" max="50">
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>答错自伤值：</label>
+                        <input type="number" id="wrong-damage" value="15" min="0" max="50">
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>抢答错误惩罚：</label>
+                        <select id="buzz-penalty">
+                            <option value="none">无惩罚</option>
+                            <option value="damage">扣血（10点）</option>
+                            <option value="skip">跳过本轮</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>抢答后答题时限（秒）：</label>
+                        <input type="number" id="buzz-timeout" value="10" min="3" max="30">
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>超时未答惩罚：</label>
+                        <select id="timeout-penalty">
+                            <option value="none">无惩罚</option>
+                            <option value="damage" selected>扣血</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>超时扣血值：</label>
+                        <input type="number" id="timeout-damage" value="10" min="5" max="30">
+                    </div>
+                    
+                    <div class="setting-row">
+                        <label>音效开关：</label>
+                        <select id="sound-toggle">
+                            <option value="on">开启</option>
+                            <option value="off">关闭</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:10px; margin-top: 15px;">
+                    <button class="pixel-btn" id="save-settings-btn" style="font-size: 10px; padding: 10px; flex:2; background: #006600;">保存所有设置</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ==================== 5. 结算屏幕 ==================== -->
+        <div id="game-over-screen" class="screen">
+            <h1 style="font-size: 40px; color: gold; text-shadow: 4px 4px 0 #000;">KO!</h1>
+            <div id="winner-avatar-container" class="winner-avatar">
+                <img id="winner-img" style="width:100%; height:100%; object-fit:contain;" src="">
+            </div>
+            <h2 id="winner-name" style="margin-top: 20px;">PLAYER 1 WINS</h2>
+            <div style="margin-top: 40px; display: flex; gap: 20px;">
+                <button class="pixel-btn" onclick="location.reload()">AGAIN</button>
+                <button class="pixel-btn" id="review-btn" style="background: #665500; border-color: var(--teacher-color);">📝 教师评讲</button>
+            </div>
+        </div>
+
+        <!-- ==================== 6. 教师评讲屏幕 ==================== -->
+        <div id="review-screen" class="screen">
+            <div class="review-header">
+                <h1 style="color: var(--teacher-color);">📝 战后评讲模式</h1>
+                <button class="pixel-btn" id="exit-review-btn" style="font-size: 12px; padding: 10px; margin-top: 10px;">退出评讲</button>
+            </div>
+            
+            <div class="review-container">
+                <!-- 左侧列表 -->
+                <div class="review-list" id="review-list">
+                    <!-- JS 生成列表项 -->
+                </div>
+                
+                <!-- 右侧详情 -->
+                <div class="review-detail" id="review-detail">
+                    <div style="text-align: center; color: #888; margin-top: 100px;">
+                        请从左侧选择题目进行讲解
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心逻辑 -->
+    <script>
+        const battleMusic = document.getElementById('battle-music');
+        let currentAnswerAudio = null; // 用于存储当前正在播放的答题音效
+        
+        // 自定义各类型音量控制
+        const volumeSettings = {
+            selectBgm: 0.4,
+            battleBgm: 0.4,
+            sfx: 1.0,
+            heroAudio: 1.5
+        };
+
+        // DOM加载完成后初始化音量面板逻辑
+        document.addEventListener('DOMContentLoaded', () => {
+            // 打开/关闭音量面板
+            const volBtn = document.getElementById('volume-config-btn');
+            const volModal = document.getElementById('volume-config-modal');
+            const volClose = document.getElementById('volume-config-modal-close');
+            
+            if(volBtn) {
+                volBtn.addEventListener('click', () => {
+                    volModal.classList.add('active');
+                });
+            }
+            if(volClose) {
+                volClose.addEventListener('click', () => {
+                    volModal.classList.remove('active');
+                });
+            }
+            if(volModal) {
+                volModal.addEventListener('click', (e) => {
+                    if(e.target === volModal) volModal.classList.remove('active');
+                });
+            }
+            
+            // 绑定各自的滑块
+            const slSelect = document.getElementById('vol-select-bgm');
+            const slBattle = document.getElementById('vol-battle-bgm');
+            const slSfx = document.getElementById('vol-sfx');
+            const slHero = document.getElementById('vol-hero-audio');
+            
+            const vSelectText = document.getElementById('val-vol-select');
+            const vBattleText = document.getElementById('val-vol-battle');
+            const vSfxText = document.getElementById('val-vol-sfx');
+            const vHeroText = document.getElementById('val-vol-hero');
+
+            if(slSelect) {
+                slSelect.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    volumeSettings.selectBgm = val;
+                    vSelectText.innerText = Math.round(val * 100) + '%';
+                    const bgm1 = document.getElementById('select-music');
+                    if (bgm1) bgm1.volume = val;
+                });
+            }
+            
+            if(slBattle) {
+                slBattle.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    volumeSettings.battleBgm = val;
+                    vBattleText.innerText = Math.round(val * 100) + '%';
+                    if (battleMusic) battleMusic.volume = val;
+                });
+            }
+
+            if(slSfx) {
+                slSfx.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    volumeSettings.sfx = val;
+                    vSfxText.innerText = Math.round(val * 100) + '%';
+                    const attackSound = document.getElementById('attack-sound');
+                    if (attackSound) attackSound.volume = val;
+                    const winSound = document.getElementById('win-sound');
+                    if (winSound) winSound.volume = val;
+                });
+            }
+
+            if(slHero) {
+                slHero.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    volumeSettings.heroAudio = val;
+                    vHeroText.innerText = Math.round(val * 100) + '%';
+                    if (currentAnswerAudio) currentAnswerAudio.volume = val;
+                });
+            }
+        });
+
+        function stopCurrentAnswerAudio() {
+            if (currentAnswerAudio) {
+                currentAnswerAudio.pause();
+                currentAnswerAudio.currentTime = 0;
+                currentAnswerAudio = null;
+            }
+            const attackSound = document.getElementById('attack-sound');
+            if (attackSound && !attackSound.paused) {
+                attackSound.pause();
+                attackSound.currentTime = 0;
+            }
+        }
+
+        function playBattleMusic() {
+            battleMusic.play();
+        }
+
+        function stopBattleMusic() {
+            battleMusic.pause();
+            battleMusic.currentTime = 0;
+        }
+
+        // 监听屏幕切换，控制音乐播放
+        const battleScreen = document.getElementById('battle-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                if (mutation.attributeName === 'class') {
+                    if (battleScreen.classList.contains('active')) {
+                        playBattleMusic();
+                    } else {
+                        stopBattleMusic();
+                    }
+                    if (gameOverScreen.classList.contains('active')) {
+                        stopBattleMusic();
+                    }
+                }
+            });
+        });
+
+        observer.observe(battleScreen, { attributes: true });
+        observer.observe(gameOverScreen, { attributes: true });
+
+
+        // ================= 数据定义 =================
+        // 拟人角色列表：使用实际图片资源
+        const CHARACTERS = [
+          
+             { name: '侠客', image: 'resource/12.png', attackSound: 'resource/yuyin/99.mp3', wrongSound: 'resource/yuyin/100.mp3'  },
+          { name: '哪吒', image: 'resource/13.png' , attackSound: 'resource/yuyin/101.mp3', wrongSound: 'resource/yuyin/102.mp3' },
+             { name: '侠客', image: 'resource/14.png', attackSound: 'resource/yuyin/103.mp3', wrongSound: 'resource/yuyin/104.mp3'  },
+             { name: '侠客', image: 'resource/15.png', attackSound: 'resource/yuyin/105.mp3', wrongSound: 'resource/yuyin/106.mp3'  },
+              { name: '侠客', image: 'resource/16.png', attackSound: 'resource/yuyin/107.mp3', wrongSound: 'resource/yuyin/108.mp3'  },
+              { name: '侠客', image: 'resource/17.png' , attackSound: 'resource/yuyin/5.mp3', wrongSound: 'resource/yuyin/5.mp3'},
+             { name: '侠客', image: 'resource/18.png', attackSound: 'resource/yuyin/99.mp3', wrongSound: 'resource/yuyin/100.mp3'  },
+          { name: '哪吒', image: 'resource/19.png' , attackSound: 'resource/yuyin/101.mp3', wrongSound: 'resource/yuyin/102.mp3' },
+             { name: '侠客', image: 'resource/20.png', attackSound: 'resource/yuyin/103.mp3', wrongSound: 'resource/yuyin/104.mp3'  },
+             { name: '侠客', image: 'resource/21.png', attackSound: 'resource/yuyin/105.mp3', wrongSound: 'resource/yuyin/106.mp3'  },
+             { name: '侠客', image: 'resource/23.png', attackSound: 'resource/yuyin/5.mp3', wrongSound: 'resource/yuyin/5.mp3' },
+             { name: '侠客', image: 'resource/24.png', attackSound: 'resource/yuyin/75.mp3', wrongSound: 'resource/yuyin/76.mp3'  },
+             { name: '侠客', image: 'resource/25.png', attackSound: 'resource/yuyin/76.mp3', wrongSound: 'resource/yuyin/77.mp3'  },
+            { name: '侠客', image: 'resource/26.png', attackSound: 'resource/yuyin/77.mp3', wrongSound: 'resource/yuyin/78.mp3'  },
+            { name: '侠客', image: 'resource/27.png', attackSound: 'resource/yuyin/78.mp3', wrongSound: 'resource/yuyin/79.mp3'  },
+             { name: '侠客', image: 'resource/28.png', attackSound: 'resource/yuyin/79.mp3', wrongSound: 'resource/yuyin/80.mp3'  },
+              { name: '侠客', image: 'resource/29.png', attackSound: 'resource/yuyin/80.mp3', wrongSound: 'resource/yuyin/81.mp3'  },
+            { name: '侠客', image: 'resource/30.png', attackSound: 'resource/yuyin/81.mp3', wrongSound: 'resource/yuyin/82.mp3'  },
+            { name: '侠客', image: 'resource/31.png', attackSound: 'resource/yuyin/82.mp3', wrongSound: 'resource/yuyin/83.mp3'  },
+             { name: '侠客', image: 'resource/32.png', attackSound: 'resource/yuyin/83.mp3', wrongSound: 'resource/yuyin/84.mp3'  },
+             { name: '侠客', image: 'resource/33.png', attackSound: 'resource/yuyin/61.mp3', wrongSound: 'resource/yuyin/62.mp3'  },
+             { name: '侠客', image: 'resource/34.png' , attackSound: 'resource/yuyin/63.mp3', wrongSound: 'resource/yuyin/64.mp3' },
+             { name: '侠客', image: 'resource/35.png', attackSound: 'resource/yuyin/64.mp3', wrongSound: 'resource/yuyin/65.mp3' },
+            { name: '侠客', image: 'resource/36.png', attackSound: 'resource/yuyin/65.mp3', wrongSound: 'resource/yuyin/66.mp3' },
+            { name: '侠客', image: 'resource/37.png', attackSound: 'resource/yuyin/66.mp3', wrongSound: 'resource/yuyin/67.mp3' },
+             { name: '侠客', image: 'resource/38.png', attackSound: 'resource/yuyin/67.mp3', wrongSound: 'resource/yuyin/68.mp3' },
+              { name: '侠客', image: 'resource/39.png', attackSound: 'resource/yuyin/68.mp3', wrongSound: 'resource/yuyin/69.mp3'  },
+            { name: '侠客', image: 'resource/40.png', attackSound: 'resource/yuyin/69.mp3', wrongSound: 'resource/yuyin/70.mp3' },
+            { name: '侠客', image: 'resource/41.png', attackSound: 'resource/yuyin/70.mp3', wrongSound: 'resource/yuyin/71.mp3' },
+             { name: '侠客', image: 'resource/42.png' , attackSound: 'resource/yuyin/72.mp3', wrongSound: 'resource/yuyin/73.mp3' },
+          { name: '哪吒', image: 'resource/43.png', attackSound: 'resource/yuyin/85.mp3', wrongSound: 'resource/yuyin/86.mp3'  },
+ { name: '侠客', image: 'resource/44.png', attackSound: 'resource/yuyin/87.mp3', wrongSound: 'resource/yuyin/88.mp3'  },
+             { name: '侠客', image: 'resource/45.png', attackSound: 'resource/yuyin/89.mp3', wrongSound: 'resource/yuyin/90.mp3'  },
+              { name: '侠客', image: 'resource/46.png', attackSound: 'resource/yuyin/91.mp3', wrongSound: 'resource/yuyin/92.mp3'  },
+            { name: '侠客', image: 'resource/47.png', attackSound: 'resource/yuyin/3.mp3', wrongSound: 'resource/yuyin/94.mp3'  },
+            { name: '侠客', image: 'resource/48.png', attackSound: 'resource/yuyin/53.mp3', wrongSound: 'resource/yuyin/54.mp3'  },
+             { name: '侠客', image: 'resource/49.png', attackSound: 'resource/yuyin/95.mp3', wrongSound: 'resource/yuyin/96.mp3'  },
+             { name: '侠客', image: 'resource/52.png', attackSound: 'resource/yuyin/99.mp3', wrongSound: 'resource/yuyin/100.mp3'  },
+          { name: '哪吒', image: 'resource/53.png' , attackSound: 'resource/yuyin/101.mp3', wrongSound: 'resource/yuyin/102.mp3' },
+             { name: '侠客', image: 'resource/54.png', attackSound: 'resource/yuyin/103.mp3', wrongSound: 'resource/yuyin/104.mp3'  },
+              { name: '侠客', image: 'resource/56.png', attackSound: 'resource/yuyin/107.mp3', wrongSound: 'resource/yuyin/108.mp3'  },
+            { name: '侠客', image: 'resource/16.png', attackSound: 'resource/yuyin/109.mp3', wrongSound: 'resource/yuyin/110.mp3' },
+              { name: '比比拉布', image: 'resource/3.png', attackSound: 'resource/yuyin/7.mp3' },
+            { name: 'meme猫', image: 'resource/5.png', attackSound: 'resource/yuyin/12.mp3' },
+            { name: '我的刀盾', image: 'resource/6.png', attackSound: 'resource/yuyin/8.mp3' , wrongSound: 'resource/yuyin/14.mp3'},
+            { name: '侠客', image: 'resource/8.png', attackSound: 'resource/yuyin/8.mp3' },
+            { name: '侠客', image: 'resource/9.png', attackSound: 'resource/yuyin/9.mp3' },
+            { name: '侠客', image: 'resource/10.png', attackSound: 'resource/yuyin/10.mp3' },
+            { name: '侠客', image: 'resource/D1.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D2.png', attackSound: 'resource/yuyin/10.mp3' },
+                    { name: '侠客', image: 'resource/D3.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D4.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D5.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D6.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D7.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D8.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D9.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D10.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D11.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D12.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D13.png', attackSound: 'resource/yuyin/10.mp3' },
+          { name: '侠客', image: 'resource/D14.png', attackSound: 'resource/yuyin/10.mp3' },
+        
+
+
+
+];
+        const PRESET_EMOJIS = CHARACTERS.map(char => char.emoji || '❓');
+        // 游戏设置（可由教师修改）
+        const GAME_SETTINGS = {
+            answerTime: 30,
+            correctDamage: 25,
+            wrongDamage: 15,
+            buzzPenalty: 'none', // 'none', 'damage', 'skip'
+            buzzTimeout: 8, // 抢答后答题时限（秒）
+            timeoutPenalty: 'damage', // 'none', 'damage'
+            timeoutDamage: 10, // 超时扣血值
+            soundEnabled: true
+        };
+        
+        // 题库管理
+        const QUESTION_BANKS = {
+            'default': [
+    { q: "TCP/IP协议簇中，负责IP地址与MAC地址解析的协议是？", o: ["ARP", "HTTP", "TCP", "DNS"], a: 0, analysis: "ARP（地址解析协议）用于将IP地址映射为MAC地址。" },
+    { q: "数据库中，用于查询数据的SQL关键字是？", o: ["INSERT", "SELECT", "UPDATE", "DELETE"], a: 1 },
+    { q: "Windows系统中，查看本机IP地址的命令是？", o: ["ipconfig", "ping", "netstat", "cmd"], a: 0 },
+    { q: "以下哪种不属于计算机存储设备？", o: ["固态硬盘(SSD)", "内存条(RAM)", "中央处理器(CPU)", "机械硬盘(HDD)"], a: 2, analysis: "CPU是用于计算的处理单元，不是存储设备。" },
+    { q: "信息安全中的“防火墙”主要作用是？", o: ["提升网速", "隔离网络访问", "查杀病毒", "数据加密"], a: 1 },
+    { q: "Python中定义函数的关键字是？", o: ["function", "def", "class", "var"], a: 1 },
+    { q: "IPv4地址的总长度是多少位？", o: ["16", "32", "64", "128"], a: 1 },
+    { q: "操作系统中，进程和线程的本质区别是？", o: ["线程占用内存更多", "进程是资源分配单位，线程是调度单位", "线程可独立运行，进程不能", "进程比线程更轻量"], a: 1 },
+    { q: "以下哪种是常见的对称加密算法？", o: ["RSA", "AES", "SHA-256", "MD5"], a: 1, analysis: "AES是对称加密，RSA是非对称加密，SHA和MD5是哈希算法。" },
+    { q: "计算机网络中，FTP协议默认使用的端口号是？", o: ["21", "80", "443", "22"], a: 0 },
+    { q: "二进制数1010转换为十进制数是？", o: ["8", "10", "12", "16"], a: 1 },
+    { q: "以下哪种不是云计算的服务模式？", o: ["IaaS", "PaaS", "SaaS", "DaaS"], a: 3 },
+    { q: "Excel中，计算单元格A1到A10求和的函数是？", o: ["SUM(A1:A10)", "ADD(A1:A10)", "TOTAL(A1:A10)", "PLUS(A1:A10)"], a: 0 },
+    { q: "物联网(IoT)的核心特征不包括？", o: ["全面感知", "可靠传输", "智能处理", "独立运行"], a: 3 }
+]
+        };
+        
+        // 当前使用的题库名称
+        let currentBankName = 'default';
+        let editingQuestionIndex = -1;
+        let customHeroSounds = {};
+        let customWrongSounds = {};
+
+        // ================= 状态管理 =================
+        const state = {
+            screen: 'select', // select, vs, battle, result, review
+            p1: { char: null, hp: 100, img: null },
+            p2: { char: null, hp: 100, img: null },
+            turn: 1, // 1=P1选, 2=P2选
+            currentQ: null,
+            isBuzzPhase: false,
+            activePlayer: null,
+            battleLog: [], // { question, player, choice, isCorrect }
+            timeoutId: null // 答题超时计时器
+        };
+
+        // ================= 工具函数：Emoji 转图片 =================
+        function emojiToDataURL(emoji) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 120; canvas.height = 120;
+            const ctx = canvas.getContext('2d');
+            ctx.font = '80px sans-serif'; // 简单渲染
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(emoji, 60, 65);
+            return canvas.toDataURL();
+        }
+
+        function playSound(type) {
+            if (!GAME_SETTINGS.soundEnabled) return;
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                // 应用效果音音量
+                const baseVolume = volumeSettings.sfx;
+                
+                switch(type) {
+                    case 'select':
+                        osc.type = 'square';
+                        osc.frequency.value = 440;
+                        gain.gain.value = baseVolume;
+                        gain.gain.exponentialRampToValueAtTime(0.01 * baseVolume + 0.001, ctx.currentTime + 0.1);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                        break;
+                    
+                    case 'buzz':
+                        osc.type = 'sawtooth';
+                        osc.frequency.value = 600;
+                        gain.gain.value = baseVolume;
+                        gain.gain.linearRampToValueAtTime(0.01 * baseVolume + 0.001, ctx.currentTime + 0.3);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.3);
+                        break;
+                    
+                    case 'correct':
+                        // 答对：上升音调
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(400, ctx.currentTime);
+                        osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.3);
+                        gain.gain.value = 0.3 * baseVolume;
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.3);
+                        break;
+                    
+                    case 'wrong':
+                        // 答错：下降音调
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(400, ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.4);
+                        gain.gain.value = 0.4 * baseVolume;
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.4);
+                        break;
+                    
+                    case 'hit':
+                        // 使用本地攻击音效
+                        const attackSound = document.getElementById('attack-sound');
+                        if (attackSound) {
+                            attackSound.currentTime = 0;
+                            attackSound.volume = volumeSettings.sfx;
+                            attackSound.play().catch(e => console.error('播放攻击音效失败:', e));
+                        } else {
+                            // 备用：生成音效
+                            osc.type = 'sawtooth';
+                            osc.frequency.setValueAtTime(150, ctx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                            gain.gain.value = 0.5 * baseVolume;
+                            osc.start();
+                            osc.stop(ctx.currentTime + 0.2);
+                        }
+                        break;
+                    
+                    case 'win':
+                        // 使用本地胜利音效
+                        const winSound = document.getElementById('win-sound');
+                        if (winSound) {
+                            winSound.currentTime = 0;
+                            winSound.volume = volumeSettings.sfx;
+                            winSound.play().catch(e => console.error('播放胜利音效失败:', e));
+                        } else {
+                            // 备用：生成音效
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(400, ctx.currentTime);
+                            osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
+                            gain.gain.value = 0.3 * baseVolume;
+                            osc.start();
+                            osc.stop(ctx.currentTime + 1.0);
+                        }
+                        break;
+                    
+                    case 'save':
+                        // 保存成功
+                        osc.type = 'square';
+                        osc.frequency.value = 600;
+                        gain.gain.value = baseVolume;
+                        gain.gain.exponentialRampToValueAtTime(0.01 * baseVolume + 0.001, ctx.currentTime + 0.15);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.15);
+                        break;
+                    
+                    case 'error':
+                        // 错误提示
+                        osc.type = 'triangle';
+                        osc.frequency.value = 200;
+                        gain.gain.value = 0.3;
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.1);
+                        setTimeout(() => {
+                            const osc2 = ctx.createOscillator();
+                            osc2.type = 'triangle';
+                            osc2.frequency.value = 150;
+                            osc2.connect(gain);
+                            osc2.start();
+                            osc2.stop(ctx.currentTime + 0.1);
+                        }, 100);
+                        break;
+                }
+            } catch(e) {}
+        }
+
+        // ================= 核心逻辑 =================
+        
+        function init() {
+            renderCharSelect();
+            
+            // 尝试播放角色选择音乐
+            const selectMusic = document.getElementById('select-music');
+            if (selectMusic) {
+                // 尝试自动播放（可能会失败，因为浏览器限制）
+                selectMusic.play().catch(e => console.error('自动播放选择音乐失败:', e));
+                
+                // 添加用户交互事件监听器，当用户点击时取消静音并播放
+                function enableAudio() {
+                    if (selectMusic.muted) {
+                        selectMusic.muted = false;
+                        selectMusic.play().catch(e => console.error('用户交互后播放选择音乐失败:', e));
+                    }
+                    // 移除监听器，避免重复执行
+                    document.removeEventListener('click', enableAudio);
+                    document.removeEventListener('touchstart', enableAudio);
+                }
+                
+                // 添加多种交互事件监听器，确保在各种设备上都能触发
+                document.addEventListener('click', enableAudio);
+                document.addEventListener('touchstart', enableAudio);
+            }
+        }
+
+        // 渲染角色选择
+        function renderCharSelect() {
+            const grid = document.getElementById('char-grid');
+            grid.innerHTML = '';
+            
+            CHARACTERS.forEach((char, idx) => {
+                let imgUrl;
+                if (char.image) {
+                    // 使用实际图片
+                    imgUrl = char.image;
+                } else if (char.emoji) {
+                    // 使用emoji
+                    imgUrl = emojiToDataURL(char.emoji);
+                }
+                
+                const div = document.createElement('div');
+                div.className = 'char-slot';
+                div.innerHTML = `
+                    <img src="${imgUrl}">
+                    <div style="position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 8px; color: #fff;">${char.name}</div>
+                `;
+                div.onclick = () => selectChar(imgUrl, div);
+                grid.appendChild(div);
+            });
+
+            // 上传图片
+            document.getElementById('upload-btn').onclick = () => document.getElementById('json-upload').click();
+            document.getElementById('json-upload').onchange = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        // 简单处理：直接当做角色
+                        selectChar(evt.target.result, null);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            // 查看所有英雄按钮
+            const viewAllBtn = document.getElementById('view-all-btn');
+            const heroModal = document.getElementById('hero-modal');
+            const modalClose = document.getElementById('modal-close');
+            const heroGrid = document.getElementById('hero-grid');
+            
+            // 显示模态框
+            viewAllBtn.onclick = () => {
+                heroModal.classList.add('active');
+                renderHeroModal();
+            };
+            
+            // 关闭模态框
+            modalClose.onclick = () => {
+                heroModal.classList.remove('active');
+            };
+            
+            // 点击模态框外部关闭
+            heroModal.onclick = (e) => {
+                if (e.target === heroModal) {
+                    heroModal.classList.remove('active');
+                }
+            };
+            
+            // 滑动按钮事件
+            const scrollUpBtn = document.getElementById('scroll-up-btn');
+            const scrollDownBtn = document.getElementById('scroll-down-btn');
+            
+            // 上滑按钮
+            scrollUpBtn.onclick = () => {
+                heroGrid.scrollBy({ top: -300, behavior: 'smooth' });
+            };
+            
+            // 下滑按钮
+            scrollDownBtn.onclick = () => {
+                heroGrid.scrollBy({ top: 300, behavior: 'smooth' });
+            };
+            
+            // 支持触摸事件
+            scrollUpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                heroGrid.scrollBy({ top: -300, behavior: 'smooth' });
+            });
+            
+            scrollDownBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                heroGrid.scrollBy({ top: 300, behavior: 'smooth' });
+            });
+            
+            // 渲染英雄模态框
+            function renderHeroModal() {
+                heroGrid.innerHTML = '';
+                
+                CHARACTERS.forEach((char, idx) => {
+                    let imgUrl;
+                    if (char.image) {
+                        imgUrl = char.image;
+                    } else if (char.emoji) {
+                        imgUrl = emojiToDataURL(char.emoji);
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.className = 'hero-slot';
+                    div.innerHTML = `
+                        <img src="${imgUrl}">
+                        <div class="hero-name">${char.name}</div>
+                    `;
+                    div.onclick = () => {
+                        selectChar(imgUrl, null);
+                        heroModal.classList.remove('active');
+                    };
+                    heroGrid.appendChild(div);
+                });
+            }
+            
+            // 导入题库
+            document.getElementById('import-question-btn').onclick = () => document.getElementById('question-upload').click();
+            document.getElementById('question-upload').onchange = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        try {
+                            const questions = JSON.parse(evt.target.result);
+                            if(Array.isArray(questions)) {
+                                const validQuestions = questions.filter(q => 
+                                    q.q && Array.isArray(q.o) && q.o.length === 4 && typeof q.a === 'number'
+                                );
+                                
+                                if(validQuestions.length > 0) {
+                                    const bankName = 'imported_' + Date.now();
+                                    QUESTION_BANKS[bankName] = validQuestions;
+                                    currentBankName = bankName;
+                                    saveToLocalStorage();
+                                    alert(`成功导入 ${validQuestions.length} 道题目！`);
+                                } else {
+                                    alert('导入的题库格式不正确，请检查题目结构！');
+                                }
+                            } else {
+                                alert('导入的文件不是有效的题目数组！');
+                            }
+                        } catch(error) {
+                            alert('导入失败：JSON格式错误！');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            // 教师面板
+            document.getElementById('teacher-panel-btn').onclick = () => {
+                switchScreen('teacher-panel-screen');
+                renderTeacherPanel();
+            };
+            
+            // 音效配置
+            document.getElementById('sound-config-btn').onclick = () => {
+                document.getElementById('sound-config-modal').classList.add('active');
+                renderHeroSoundConfigList();
+                playSound('select');
+            };
+            document.getElementById('sound-config-modal-close').onclick = () => {
+                document.getElementById('sound-config-modal').classList.remove('active');
+                playSound('select');
+            };
+            
+            // 更新日志
+            document.getElementById('changelog-btn').onclick = () => {
+                showChangelog();
+            };
+        }
+        
+        // ================= 教师面板功能 =================
+        
+        let currentConfigHeroImg = null;
+        let currentConfigUploadType = 'attack'; // 'attack' or 'wrong'
+
+        window.uploadHeroSound = function(imgUrl, type) {
+            currentConfigHeroImg = imgUrl;
+            currentConfigUploadType = type;
+            document.getElementById('hero-sound-upload').click();
+        };
+
+        function renderTeacherPanel() {
+            renderBankSelector();
+            renderQuestionList();
+            loadSettings();
+        }
+
+        function renderHeroSoundConfigList() {
+            const container = document.getElementById('hero-sound-config-list');
+            container.innerHTML = '';
+            
+            // 确保为所有英雄设置一个容器，这样教师可以看到自定义音效
+            CHARACTERS.forEach((char) => {
+                let imgUrl = char.image || emojiToDataURL(char.emoji);
+                const hasAttackCustom = !!customHeroSounds[imgUrl];
+                const hasWrongCustom = !!customWrongSounds[imgUrl];
+                const hasDefaultAttack = !!char.attackSound;
+                
+                const div = document.createElement('div');
+                div.className = 'hero-slot';
+                div.style.height = '120px';
+                
+                let borderColor = 'transparent';
+                if (hasAttackCustom || hasWrongCustom) borderColor = '#ff0055';
+                else if (hasDefaultAttack) borderColor = '#00e5ff';
+                div.style.borderColor = borderColor;
+                
+                div.innerHTML = `
+                    <div style="font-size:10px; width:100%; text-align:center; padding-top:2px;">
+                        ${hasAttackCustom ? '⚔️' : (hasDefaultAttack ? '🔵' : '⬜')}
+                        ${hasWrongCustom ? '❌' : '⬜'}
+                    </div>
+                    <img src="${imgUrl}" style="max-height:50px; margin-top: 5px;">
+                    <div class="hero-name" style="bottom:25px; top:auto; background:none; text-shadow:1px 1px 0 #000;">${char.name}</div>
+                    <div style="position:absolute; bottom:0; left:0; right:0; display:flex;">
+                        <button class="pixel-btn" style="flex:1; font-size:10px; padding:4px 0; min-width:0; background:#330000;" onclick="event.stopPropagation(); window.uploadHeroSound('${imgUrl}', 'attack')">攻音</button>
+                        <button class="pixel-btn" style="flex:1; font-size:10px; padding:4px 0; min-width:0; background:#000033;" onclick="event.stopPropagation(); window.uploadHeroSound('${imgUrl}', 'wrong')">错音</button>
+                    </div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+        
+        function renderBankSelector() {
+            const container = document.getElementById('bank-selector');
+            container.innerHTML = '';
+            
+            Object.keys(QUESTION_BANKS).forEach(bankName => {
+                const btn = document.createElement('button');
+                btn.className = 'bank-btn';
+                if (bankName === currentBankName) btn.classList.add('active');
+                btn.textContent = bankName === 'default' ? '默认题库' : bankName;
+                btn.setAttribute('data-bank', bankName);
+                btn.onclick = () => switchBank(bankName);
+                container.appendChild(btn);
+            });
+        }
+        
+        function switchBank(bankName) {
+            currentBankName = bankName;
+            renderBankSelector();
+            renderQuestionList();
+            playSound('select');
+        }
+        
+        function renderQuestionList() {
+            const container = document.getElementById('question-list');
+            const questions = QUESTION_BANKS[currentBankName] || [];
+            
+            container.innerHTML = '';
+            
+            if (questions.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无题目</div>';
+                return;
+            }
+            
+            questions.forEach((q, idx) => {
+                const div = document.createElement('div');
+                div.className = 'question-item';
+                div.innerHTML = `
+                    <div class="question-text">${idx + 1}. ${q.q}</div>
+                    <div class="question-actions">
+                        <button class="btn-small btn-edit" onclick="editQuestion(${idx})">编辑</button>
+                        <button class="btn-small btn-delete" onclick="deleteQuestion(${idx})">删除</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function showQuestionForm(isEdit = false, index = -1) {
+            const form = document.getElementById('question-form');
+            const title = document.getElementById('form-title');
+            
+            if (isEdit && index >= 0) {
+                const q = QUESTION_BANKS[currentBankName][index];
+                title.textContent = '✏️ 编辑题目';
+                document.getElementById('q-input').value = q.q;
+                document.getElementById('opt-0').value = q.o[0];
+                document.getElementById('opt-1').value = q.o[1];
+                document.getElementById('opt-2').value = q.o[2];
+                document.getElementById('opt-3').value = q.o[3];
+                document.getElementById('answer-select').value = q.a;
+                document.getElementById('q-analysis').value = q.analysis || '';
+                editingQuestionIndex = index;
+            } else {
+                title.textContent = '➕ 添加题目';
+                document.getElementById('q-input').value = '';
+                document.getElementById('opt-0').value = '';
+                document.getElementById('opt-1').value = '';
+                document.getElementById('opt-2').value = '';
+                document.getElementById('opt-3').value = '';
+                document.getElementById('answer-select').value = 0;
+                document.getElementById('q-analysis').value = '';
+                editingQuestionIndex = -1;
+            }
+            
+            form.style.display = 'block';
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function hideQuestionForm() {
+            document.getElementById('question-form').style.display = 'none';
+            editingQuestionIndex = -1;
+        }
+        
+        function saveQuestion() {
+            const q = document.getElementById('q-input').value.trim();
+            const o = [
+                document.getElementById('opt-0').value.trim(),
+                document.getElementById('opt-1').value.trim(),
+                document.getElementById('opt-2').value.trim(),
+                document.getElementById('opt-3').value.trim()
+            ];
+            const a = parseInt(document.getElementById('answer-select').value);
+            const analysis = document.getElementById('q-analysis').value.trim();
+            
+            if (!q || o.some(opt => !opt)) {
+                playSound('error');
+                alert('请填写完整的题目信息！');
+                return;
+            }
+            
+            const question = { q, o, a, analysis };
+            
+            if (editingQuestionIndex >= 0) {
+                QUESTION_BANKS[currentBankName][editingQuestionIndex] = question;
+            } else {
+                QUESTION_BANKS[currentBankName].push(question);
+            }
+            
+            saveToLocalStorage();
+            playSound('save');
+            hideQuestionForm();
+            renderQuestionList();
+        }
+        
+        function editQuestion(index) {
+            showQuestionForm(true, index);
+        }
+        
+        function deleteQuestion(index) {
+            if (confirm('确定要删除这道题目吗？')) {
+                QUESTION_BANKS[currentBankName].splice(index, 1);
+                saveToLocalStorage();
+                playSound('select');
+                renderQuestionList();
+            }
+        }
+        
+        function createNewBank() {
+            const name = prompt('请输入新题库名称：');
+            if (name && name.trim()) {
+                const bankName = name.trim();
+                if (QUESTION_BANKS[bankName]) {
+                    alert('该题库名称已存在！');
+                    return;
+                }
+                QUESTION_BANKS[bankName] = [];
+                currentBankName = bankName;
+                saveToLocalStorage();
+                playSound('save');
+                renderBankSelector();
+                renderQuestionList();
+            }
+        }
+        
+        function deleteCurrentBank() {
+            if (currentBankName === 'default') {
+                alert('不能删除默认题库！');
+                return;
+            }
+            
+            if (confirm(`确定要删除题库 "${currentBankName}" 吗？`)) {
+                delete QUESTION_BANKS[currentBankName];
+                currentBankName = 'default';
+                saveToLocalStorage();
+                playSound('select');
+                renderBankSelector();
+                renderQuestionList();
+            }
+        }
+        
+        function exportCurrentBank() {
+            const bankData = QUESTION_BANKS[currentBankName] || [];
+            if (bankData.length === 0) {
+                alert('当前题库为空，无需导出！');
+                return;
+            }
+            
+            const jsonString = JSON.stringify(bankData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentBankName}_题库_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            playSound('save');
+            alert(`题库 "${currentBankName}" 导出成功！`);
+        }
+        
+        function loadSettings() {
+            if (document.getElementById('answer-time')) {
+                document.getElementById('answer-time').value = GAME_SETTINGS.answerTime;
+            }
+            document.getElementById('correct-damage').value = GAME_SETTINGS.correctDamage;
+            document.getElementById('wrong-damage').value = GAME_SETTINGS.wrongDamage;
+            document.getElementById('buzz-penalty').value = GAME_SETTINGS.buzzPenalty;
+            document.getElementById('buzz-timeout').value = GAME_SETTINGS.buzzTimeout;
+            document.getElementById('timeout-penalty').value = GAME_SETTINGS.timeoutPenalty;
+            document.getElementById('timeout-damage').value = GAME_SETTINGS.timeoutDamage;
+            document.getElementById('sound-toggle').value = GAME_SETTINGS.soundEnabled ? 'on' : 'off';
+        }
+        
+        function saveSettings() {
+            if (document.getElementById('answer-time')) {
+                GAME_SETTINGS.answerTime = parseInt(document.getElementById('answer-time').value);
+            }
+            GAME_SETTINGS.correctDamage = parseInt(document.getElementById('correct-damage').value);
+            GAME_SETTINGS.wrongDamage = parseInt(document.getElementById('wrong-damage').value);
+            GAME_SETTINGS.buzzPenalty = document.getElementById('buzz-penalty').value;
+            GAME_SETTINGS.buzzTimeout = parseInt(document.getElementById('buzz-timeout').value);
+            GAME_SETTINGS.timeoutPenalty = document.getElementById('timeout-penalty').value;
+            GAME_SETTINGS.timeoutDamage = parseInt(document.getElementById('timeout-damage').value);
+            GAME_SETTINGS.soundEnabled = document.getElementById('sound-toggle').value === 'on';
+            
+            saveToLocalStorage();
+            playSound('save');
+            alert('设置已保存！');
+        }
+        
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('questionBanks', JSON.stringify(QUESTION_BANKS));
+                localStorage.setItem('gameSettings', JSON.stringify(GAME_SETTINGS));
+                localStorage.setItem('currentBankName', currentBankName);
+                localStorage.setItem('customHeroSounds', JSON.stringify(customHeroSounds));
+                localStorage.setItem('customWrongSounds', JSON.stringify(customWrongSounds));
+            } catch(e) {
+                console.error('保存到本地存储失败:', e);
+            }
+        }
+        
+        function loadFromLocalStorage() {
+            try {
+                const banks = localStorage.getItem('questionBanks');
+                if (banks) {
+                    const parsed = JSON.parse(banks);
+                    Object.assign(QUESTION_BANKS, parsed);
+                }
+                
+                const settings = localStorage.getItem('gameSettings');
+                if (settings) {
+                    Object.assign(GAME_SETTINGS, JSON.parse(settings));
+                }
+                
+                const bankName = localStorage.getItem('currentBankName');
+                if (bankName && QUESTION_BANKS[bankName]) {
+                    currentBankName = bankName;
+                }
+                
+                const sounds = localStorage.getItem('customHeroSounds');
+                if (sounds) {
+                    customHeroSounds = JSON.parse(sounds);
+                }
+                const wrongSounds = localStorage.getItem('customWrongSounds');
+                if (wrongSounds) {
+                    customWrongSounds = JSON.parse(wrongSounds);
+                }
+            } catch(e) {
+                console.error('从本地存储加载失败:', e);
+            }
+        }
+
+        function selectChar(imgSrc, el) {
+            playSound('select');
+            if (state.turn === 1) {
+                state.p1.img = imgSrc;
+                if(el) el.classList.add('selected-p1', 'locked');
+                // 更新P1角色展示
+                const p1Display = document.getElementById('p1-char-display');
+                p1Display.innerHTML = `<img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: contain;">`;
+                document.getElementById('select-status').innerText = "PLAYER 2 选择中...";
+                document.getElementById('select-status').style.color = "var(--p2-color)";
+                state.turn = 2;
+            } else {
+                state.p2.img = imgSrc;
+                if(el) el.classList.add('selected-p2', 'locked');
+                // 更新P2角色展示
+                const p2Display = document.getElementById('p2-char-display');
+                p2Display.innerHTML = `<img src="${imgSrc}" style="width: 100%; height: 100%; object-fit: contain;">`;
+                startVS();
+            }
+        }
+
+        function switchScreen(id) {
+            // 控制角色选择音乐
+            const selectMusic = document.getElementById('select-music');
+            if (id === 'char-select-screen' && selectMusic) {
+                // 尝试播放，即使可能被静音（用户交互后会取消静音）
+                selectMusic.play().catch(e => console.error('播放选择音乐失败:', e));
+            } else if (selectMusic) {
+                selectMusic.pause();
+                selectMusic.currentTime = 0;
+            }
+            
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function startVS() {
+            state.p1.hp = 100;
+            state.p2.hp = 100;
+            switchScreen('vs-screen');
+            document.getElementById('vs-img-p1').src = state.p1.img;
+            document.getElementById('vs-img-p2').src = state.p2.img;
+            
+            setTimeout(() => {
+                startBattle();
+            }, 2500);
+        }
+
+        function startBattle() {
+            state.battleLog = []; // 重置战报
+            state.correctQuestions = []; // 重置已答对题目记录
+            switchScreen('battle-screen');
+            document.getElementById('battle-img-p1').src = state.p1.img;
+            document.getElementById('battle-img-p2').src = state.p2.img;
+            updateHPUI();
+            nextRound();
+        }
+
+        function nextRound() {
+            if (state.p1.hp <=0 || state.p2.hp <=0) return;
+
+            // 从当前题库随机抽题
+            const questions = QUESTION_BANKS[currentBankName];
+            if (!questions || questions.length === 0) {
+                alert('当前题库没有题目！');
+                return;
+            }
+
+            // 过滤掉已经答对过的题目
+            const availableQuestions = questions.filter(q => !state.correctQuestions.includes(q.q));
+            
+            // 若题库题目全部答对过，则此时血量高的队伍获胜
+            if (availableQuestions.length === 0) {
+                if (state.p1.hp > state.p2.hp) {
+                    endGame('p1');
+                } else if (state.p2.hp > state.p1.hp) {
+                    endGame('p2');
+                } else {
+                    endGame('p1'); // 若血量相同，暂定 p1 赢，也可按需修改为平局
+                }
+                return;
+            }
+
+            const q = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+            state.currentQ = q;
+            
+            // 重置 UI
+            document.getElementById('q-text').innerText = q.q;
+            document.getElementById('q-options-preview').innerHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;"><div style="color: #ff6b6b;">A: ${q.o[0]}</div><div style="color: #4ecdc4;">B: ${q.o[1]}</div><div style="color: #45b7d1;">C: ${q.o[2]}</div><div style="color: #96ceb4;">D: ${q.o[3]}</div></div>`; // 可选预览
+            
+            enableBuzzers();
+        }
+
+        function enableBuzzers() {
+            state.isBuzzPhase = true;
+            const b1 = document.getElementById('buzz-p1');
+            const b2 = document.getElementById('buzz-p2');
+            
+            b1.classList.remove('disabled');
+            b2.classList.remove('disabled');
+            b1.innerHTML = 'P1<small>READY</small>';
+            b2.innerHTML = 'P2<small>READY</small>';
+        }
+
+        function playerBuzz(player) {
+            if (!state.isBuzzPhase) return;
+            
+            // 下一位玩家抢答时，立即停止上一轮的答题结果音效
+            stopCurrentAnswerAudio();
+            
+            state.isBuzzPhase = false;
+            state.activePlayer = player;
+            playSound('buzz');
+
+            // 禁用按钮
+            document.getElementById('buzz-p1').classList.add('disabled');
+            document.getElementById('buzz-p2').classList.add('disabled');
+
+            // 显示答题权获取提示
+            const pName = player === 'p1' ? 'PLAYER 1' : 'PLAYER 2';
+            const color = player === 'p1' ? 'var(--p1-color)' : 'var(--p2-color)';
+            
+            const notification = document.createElement('div');
+            notification.className = 'buzz-notification';
+            notification.style.color = color;
+            notification.style.borderColor = color;
+            notification.style.boxShadow = `0 0 80px ${color}`;
+            notification.innerText = `${pName} 抢到了答题权！`;
+            document.body.appendChild(notification);
+            
+            // 1.5秒后显示题目
+            setTimeout(() => {
+                document.body.removeChild(notification);
+                showQuizModal();
+            }, 1500);
+        }
+
+        function showQuizModal() {
+            const modal = document.getElementById('quiz-modal');
+            const q = state.currentQ;
+            const pName = state.activePlayer === 'p1' ? 'PLAYER 1' : 'PLAYER 2';
+            const color = state.activePlayer === 'p1' ? 'var(--p1-color)' : 'var(--p2-color)';
+
+            document.getElementById('modal-turn-indicator').innerText = `${pName} 正在答题！`;
+            document.getElementById('modal-turn-indicator').style.border = `2px solid ${color}`;
+            document.getElementById('modal-turn-indicator').style.background = color;
+            
+            // 在模态框中添加抢到信息显示
+            const questionTextElement = document.getElementById('modal-question-text');
+            questionTextElement.innerHTML = `
+                <div style="font-size: 24px; color: ${color}; margin-bottom: 20px; font-weight: bold;">
+                    ${pName} 抢到了题目！
+                </div>
+                <div class="question-content">${q.q}</div>
+            `;
+            
+            // 移除自适应字体大小，保持原始尺寸
+            // adjustFontSize();
+            
+            const optContainer = document.getElementById('modal-options');
+            optContainer.innerHTML = '';
+            
+            q.o.forEach((optText, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn';
+                btn.innerText = optText;
+                btn.onclick = () => handleAnswer(idx);
+                optContainer.appendChild(btn);
+            });
+
+            modal.classList.add('modal-active');
+            
+            // 启动超时计时器
+            if (state.timeoutId) {
+                clearTimeout(state.timeoutId);
+            }
+            
+            state.timeoutId = setTimeout(() => {
+                handleTimeout();
+            }, GAME_SETTINGS.buzzTimeout * 1000);
+        }
+        
+        // 自适应字体大小
+        function adjustFontSize() {
+            const questionContent = document.querySelector('.question-content');
+            if (!questionContent) return;
+            
+            const container = document.getElementById('quiz-modal-content');
+            const containerWidth = container.clientWidth - 40; // 减去内边距
+            const containerHeight = container.clientHeight - 100; // 减去其他元素高度
+            
+            // 初始字体大小
+            let fontSize = 36;
+            questionContent.style.fontSize = `${fontSize}px`;
+            
+            // 调整字体大小直到文本适应容器
+            while (fontSize > 16) {
+                const textWidth = questionContent.scrollWidth;
+                const textHeight = questionContent.scrollHeight;
+                
+                if (textWidth <= containerWidth && textHeight <= containerHeight) {
+                    break;
+                }
+                
+                fontSize -= 2;
+                questionContent.style.fontSize = `${fontSize}px`;
+            }
+        }
+        
+        // 窗口大小改变时重新调整字体大小
+        window.addEventListener('resize', adjustFontSize);
+        
+        // 处理答题超时
+        function handleTimeout() {
+            // 清除计时器
+            if (state.timeoutId) {
+                clearTimeout(state.timeoutId);
+                state.timeoutId = null;
+            }
+            
+            const modal = document.getElementById('quiz-modal');
+            modal.classList.remove('modal-active');
+            
+            // 记录到战报
+            state.battleLog.push({
+                question: state.currentQ,
+                player: state.activePlayer,
+                choice: -1, // -1表示超时未答
+                isCorrect: false
+            });
+            
+            playSound('wrong');
+            
+            // 根据设置执行惩罚
+            if (GAME_SETTINGS.timeoutPenalty === 'damage') {
+                // 显示超时提示
+                showTimeoutMessage();
+                // 执行扣血
+                performSelfDamage(state.activePlayer, GAME_SETTINGS.timeoutDamage);
+            } else {
+                // 无惩罚，直接进入下一轮
+                nextRound();
+            }
+        }
+        
+        // 显示超时提示
+        function showTimeoutMessage() {
+            const pName = state.activePlayer === 'p1' ? 'PLAYER 1' : 'PLAYER 2';
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: #ff4444;
+                padding: 30px 50px;
+                border-radius: 10px;
+                font-size: 32px;
+                font-weight: bold;
+                z-index: 10000;
+                border: 3px solid #ff4444;
+                text-align: center;
+            `;
+            message.innerHTML = `
+                <div>⏰ 超时未答！</div>
+                <div style="font-size: 20px; margin-top: 10px; color: #fff;">${pName} 扣血 ${GAME_SETTINGS.timeoutDamage} 点</div>
+            `;
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 2000);
+        }
+
+        function handleAnswer(idx) {
+            // 清除超时计时器
+            if (state.timeoutId) {
+                clearTimeout(state.timeoutId);
+                state.timeoutId = null;
+            }
+            
+            const isCorrect = (idx === state.currentQ.a);
+            
+            // 记录到战报
+            state.battleLog.push({
+                question: state.currentQ,
+                player: state.activePlayer,
+                choice: idx,
+                isCorrect: isCorrect
+            });
+
+            const modal = document.getElementById('quiz-modal');
+            modal.classList.remove('modal-active');
+
+            if (isCorrect) {
+                // 将题目加入已答对列表
+                if (!state.correctQuestions) state.correctQuestions = [];
+                if (!state.correctQuestions.includes(state.currentQ.q)) {
+                    state.correctQuestions.push(state.currentQ.q);
+                }
+                
+                playSound('correct');
+                performAttack(state.activePlayer);
+            } else {
+                playSound('wrong');
+                performSelfDamage(state.activePlayer);
+            }
+        }
+
+        // 攻击逻辑
+        function performAttack(attacker) {
+            const victim = attacker === 'p1' ? 'p2' : 'p1';
+            const attackerEl = document.getElementById(`fighter-${attacker}`);
+            const victimEl = document.getElementById(`fighter-${victim}`);
+
+            // 随机选择攻击类型
+            const attackTypes = ['fireball', 'lightning', 'ice'];
+            const attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+            
+            // 创建攻击元素
+            createAttackElement(attacker, attackType);
+            
+            // 动画
+            let customSoundPlayed = false;
+            if (GAME_SETTINGS.soundEnabled) {
+                const attackerImg = state[attacker].img;
+                let soundUrl = customHeroSounds[attackerImg];
+                
+                // 如果没有自定义音效，则尝试查找自带默认音效
+                if (!soundUrl) {
+                    let hero = CHARACTERS.find(c => c.image === attackerImg);
+                    if (hero && hero.attackSound) {
+                        soundUrl = hero.attackSound;
+                    }
+                }
+
+                if (soundUrl) {
+                    stopCurrentAnswerAudio();
+                    currentAnswerAudio = new Audio(soundUrl);
+                    // 提供放大增益，通过确保值能覆盖原音频不够响的情况（最大允许一定过载）
+                    currentAnswerAudio.volume = Math.min(volumeSettings.heroAudio * 2, 1.0); 
+                    currentAnswerAudio.play().catch(e => console.error('播放特制进攻音效失败:', e));
+                    customSoundPlayed = true;
+                }
+            }
+            
+            if (!customSoundPlayed) {
+                playSound('hit');
+            }
+            
+            attackerEl.style.animation = attacker === 'p1' ? 'attackP1 0.4s' : 'attackP2 0.4s';
+            
+            setTimeout(() => {
+                attackerEl.style.animation = '';
+                
+                // 显示击中效果
+                showHitEffect(victim, attackType);
+                
+                // 震动和闪光
+                victimEl.classList.add('shake', 'hit-flash');
+                showDamage(victim, -GAME_SETTINGS.correctDamage);
+                
+                // 扣血
+                state[victim].hp -= GAME_SETTINGS.correctDamage;
+                updateHPUI();
+                
+                setTimeout(() => {
+                    victimEl.classList.remove('shake', 'hit-flash');
+                    checkWin();
+                }, 500);
+            }, 200);
+        }
+        
+        // 创建攻击元素
+        function createAttackElement(attacker, attackType) {
+            const battleScreen = document.getElementById('battle-screen');
+            const element = document.createElement('div');
+            element.className = `attack-element ${attackType}`;
+            
+            // 设置初始位置
+            if (attacker === 'p1') {
+                element.style.left = '20%';
+                element.style.top = '40%';
+                element.style.animation = `${attackType}P1 0.4s forwards`;
+            } else {
+                element.style.right = '20%';
+                element.style.top = '40%';
+                element.style.animation = `${attackType}P2 0.4s forwards`;
+            }
+            
+            battleScreen.appendChild(element);
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                element.remove();
+            }, 400);
+        }
+        
+        // 显示击中效果
+        function showHitEffect(target, attackType) {
+            const battleScreen = document.getElementById('battle-screen');
+            const targetEl = document.getElementById(`fighter-${target}`);
+            const rect = targetEl.getBoundingClientRect();
+            
+            // 创建爆炸效果
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion-effect';
+            explosion.style.left = (rect.left + rect.width / 2 - 50) + 'px';
+            explosion.style.top = (rect.top + rect.height / 2 - 50) + 'px';
+            explosion.style.animation = 'explosion 0.3s forwards';
+            battleScreen.appendChild(explosion);
+            
+            // 创建闪光效果
+            const flash = document.createElement('div');
+            flash.className = 'flash-effect';
+            flash.style.animation = 'flash 0.2s forwards';
+            battleScreen.appendChild(flash);
+            
+            // 移除效果元素
+            setTimeout(() => {
+                explosion.remove();
+                flash.remove();
+            }, 300);
+        }
+
+        // 自爆逻辑
+        function performSelfDamage(player, damage = null) {
+            const pEl = document.getElementById(`fighter-${player}`);
+            const damageValue = damage !== null ? damage : GAME_SETTINGS.wrongDamage;
+            
+            let customWrongSoundPlayed = false;
+            if (GAME_SETTINGS.soundEnabled) {
+                const playerImg = state[player].img;
+                let soundUrl = customWrongSounds[playerImg];
+                
+                // 如果没有自定义音效，则尝试查找自带默认音效
+                if (!soundUrl) {
+                    let hero = CHARACTERS.find(c => c.image === playerImg);
+                    if (hero && hero.wrongSound) {
+                        soundUrl = hero.wrongSound;
+                    }
+                }
+                
+                if (soundUrl) {
+                    stopCurrentAnswerAudio();
+                    currentAnswerAudio = new Audio(soundUrl);
+                    currentAnswerAudio.volume = Math.min(volumeSettings.heroAudio * 2, 1.0);
+                    currentAnswerAudio.play().catch(e => console.error('播放特制答错音效失败:', e));
+                    customWrongSoundPlayed = true;
+                }
+            }
+            
+            if (!customWrongSoundPlayed) {
+                playSound('hit');
+            }
+            
+            pEl.classList.add('shake', 'hit-flash');
+            showDamage(player, -damageValue);
+            
+            state[player].hp -= damageValue;
+            updateHPUI();
+
+            setTimeout(() => {
+                pEl.classList.remove('shake', 'hit-flash');
+                checkWin();
+            }, 500);
+        }
+
+        function showDamage(target, val) {
+            const popup = document.createElement('div');
+            popup.className = 'damage-popup';
+            popup.innerText = val;
+            
+            // 随机位置偏移
+            const parent = document.getElementById(`fighter-${target}`);
+            parent.appendChild(popup);
+            
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function updateHPUI() {
+            const p1Pct = Math.max(0, state.p1.hp) + '%';
+            const p2Pct = Math.max(0, state.p2.hp) + '%';
+            
+            document.getElementById('hp-bar-p1').style.width = p1Pct;
+            document.getElementById('hp-bar-p2').style.width = p2Pct;
+        }
+
+        function checkWin() {
+            if (state.p1.hp <= 0 && state.p2.hp <= 0) {
+                // 同归于尽 (罕见，判 P1 赢或平局，这里简化)
+                endGame('p1'); 
+            } else if (state.p2.hp <= 0) {
+                endGame('p1');
+            } else if (state.p1.hp <= 0) {
+                endGame('p2');
+            } else {
+                nextRound();
+            }
+        }
+
+        function endGame(winnerKey) {
+            playSound('win');
+            switchScreen('game-over-screen');
+            const img = state[winnerKey].img;
+            document.getElementById('winner-img').src = img;
+            document.getElementById('winner-name').innerText = (winnerKey === 'p1' ? 'PLAYER 1' : 'PLAYER 2') + " WINS!";
+            document.getElementById('winner-name').style.color = winnerKey === 'p1' ? 'var(--p1-color)' : 'var(--p2-color)';
+            
+            // 异步上传游戏数据
+            uploadGameData(winnerKey);
+        }
+
+        async function uploadGameData(winnerKey) {
+            try {
+                const p1Hero = CHARACTERS.find(c => c.image === state.p1.img);
+                const p2Hero = CHARACTERS.find(c => c.image === state.p2.img);
+                const p1Name = p1Hero ? p1Hero.name : 'Player 1';
+                const p2Name = p2Hero ? p2Hero.name : 'Player 2';
+                
+                const gameData = {
+                    p1: p1Name,
+                    p2: p2Name,
+                    winner: winnerKey === 'p1' ? p1Name : p2Name,
+                    battleLog: state.battleLog.map(log => ({
+                        questionText: log.question.q,
+                        options: log.question.o,
+                        correctOption: log.question.a,
+                        player: log.player === 'p1' ? p1Name : p2Name,
+                        choice: log.choice,
+                        isCorrect: log.isCorrect
+                    })),
+                    timestamp: new Date().toISOString()
+                };
+
+                fetch('https://quickform.cn/api/2nam530msr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gameData)
+                }).catch(err => console.error("数据上报失败(内部):", err));
+            } catch (error) {
+                console.error("数据上报失败:", error);
+            }
+        }
+
+        // ================= 评讲模式逻辑 =================
+        function enterReviewMode() {
+            switchScreen('review-screen');
+            renderReviewList();
+            playSound('select');
+        }
+
+        function renderReviewList() {
+            const list = document.getElementById('review-list');
+            list.innerHTML = '';
+
+            if (state.battleLog.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">本局暂无答题记录</div>';
+                return;
+            }
+
+            state.battleLog.forEach((log, idx) => {
+                const item = document.createElement('div');
+                item.className = `review-item ${log.isCorrect ? 'correct' : 'wrong'}`;
+                const pName = log.player === 'p1' ? 'P1' : 'P2';
+                
+                item.innerHTML = `
+                    <div style="font-size: 10px; color: #aaa; margin-bottom: 5px;">
+                        第 ${idx + 1} 题 - ${pName} ${log.isCorrect ? '答对' : '答错'}
+                    </div>
+                    <div style="font-size: 12px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${log.question.q}
+                    </div>
+                `;
+                item.onclick = () => showReviewDetail(idx, item);
+                list.appendChild(item);
+            });
+            
+            // 默认显示第一题
+            if (state.battleLog.length > 0) {
+                showReviewDetail(0, list.firstChild);
+            }
+        }
+
+        function showReviewDetail(idx, itemEl) {
+            // Highlight list item
+            document.querySelectorAll('.review-item').forEach(el => el.classList.remove('active'));
+            if(itemEl) itemEl.classList.add('active');
+
+            const log = state.battleLog[idx];
+            const q = log.question;
+            const container = document.getElementById('review-detail');
+            
+            const pName = log.player === 'p1' ? 'PLAYER 1' : 'PLAYER 2';
+            const logColor = log.isCorrect ? 'var(--success-color)' : 'var(--error-color)';
+            const resultText = log.isCorrect ? '回答正确' : '回答错误';
+
+            // 构建选项HTML
+            let optionsHtml = '';
+            q.o.forEach((optText, i) => {
+                let classes = 'detail-opt';
+                if (i === q.a) classes += ' is-correct'; // 正确答案
+                if (!log.isCorrect && i === log.choice) classes += ' is-wrong-choice'; // 错选
+                
+                optionsHtml += `<div class="${classes}">${String.fromCharCode(65+i)}. ${optText}</div>`;
+            });
+
+            container.innerHTML = `
+                <div class="review-status" style="margin-bottom: 20px; color: ${logColor}; border: 1px solid ${logColor}; padding: 10px; display: inline-block;">
+                    ${pName} ${resultText}
+                </div>
+
+                <div class="detail-q">
+                    <span style="color: var(--teacher-color);">Q${idx+1}:</span> ${q.q}
+                </div>
+
+                <div class="detail-options">
+                    ${optionsHtml}
+                </div>
+
+                <div class="analysis-box" style="display: ${q.analysis ? 'block' : 'none'}; border-top: 1px solid #333; margin-top: 15px; padding-top: 15px;">
+                    <div class="analysis-title">
+                        <span>🎓 教师点评 / 知识点解析</span>
+                    </div>
+                    <div style="color: #fff; font-size: 18px; line-height: 1.6; font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; font-weight: 400;">
+                        ${q.analysis || ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ================= 事件 =================
+        document.getElementById('review-btn').addEventListener('click', enterReviewMode);
+        // 更新日志数据
+        const CHANGELOG = [
+            {
+                version: 'v3.1.0',
+                date: '2026-05-10',
+                changes: [
+                    { type: 'feature', text: '新增音量调节功能，支持独立调节选角BGM、战斗BGM、系统音效和英雄语音音量' },
+                    { type: 'feature', text: '新增使用说明按钮，点击可打开详细使用指南文档' },
+                    { type: 'improvement', text: '答题框选项布局优化，从单栏改为两栏布局，提升空间利用率' },
+                    { type: 'improvement', text: '抢答后答题框宽度增加，从850px扩展到1100px，提供更充足的显示空间' },
+                    { type: 'improvement', text: '选择题选项字体大小优化，从28px调整为24px，配合两栏布局提升阅读体验' },
+                    { type: 'improvement', text: '答题选项内边距优化，从25px调整为20px，在有限空间内容纳更多信息' },
+                    { type: 'improvement', text: '界面布局比例协调优化，确保答题框与选项区域视觉效果平衡' }
+                ]
+            },
+            {
+                version: 'v2.4.0',
+                date: '2026-05-05',
+                changes: [
+                    { type: 'feature', text: '为英雄添加进攻音效功能，增强战斗时的反馈效果' },
+                    { type: 'feature', text: '为英雄添加答错音效功能，增强游戏反馈效果' },
+                    { type: 'feature', text: '新增音效配置功能，支持为英雄自定义进攻和答错音效' },
+                    { type: 'improvement', text: '修复答题框显示异常问题，确保长题目内容能够完整显示' },
+                    { type: 'improvement', text: '优化抢答者信息显示，确保不会被界面元素遮挡' },
+                    { type: 'feature', text: '在答题界面明确显示抢到题目的学生信息' }
+                ]
+            },
+            {
+                version: 'v2.3.0',
+                date: '2026-04-27',
+                changes: [
+                    { type: 'feature', text: '新增抢答超时惩罚功能，抢答后规定时间内未答题将自动扣血' },
+                    { type: 'feature', text: '教师面板可自定义抢答后答题时限（3-30秒）' },
+                    { type: 'feature', text: '教师面板可自定义超时惩罚类型（无惩罚/扣血）和扣血值' },
+                    { type: 'improvement', text: '超时后显示提示信息，明确告知玩家超时扣血' }
+                ]
+            },
+            {
+                version: 'v2.2.0',
+                date: '2026-04-25',
+                changes: [
+                    { type: 'improvement', text: '查看所有英雄模态框添加触屏上下滑动按钮，确保在希沃白板等触屏设备上正常使用' },
+                    { type: 'improvement', text: '滑动按钮支持点击和触摸事件，提供平滑的滚动体验' }
+                ]
+            },
+            {
+                version: 'v2.1.0',
+                date: '2026-04-23',
+                changes: [
+                    { type: 'feature', text: '新增更新日志功能，点击教师面板中的更新日志按钮查看版本迭代信息' },
+                    { type: 'feature', text: '战斗过程增加多种攻击手段，包括火球、雷电和冰冻攻击' },
+                    { type: 'improvement', text: '攻击动画效果优化，增加爆炸、闪光和震动效果' }
+                ]
+            },
+            {
+                version: 'v2.0.1',
+                date: '2026-04-20',
+                changes: [
+                    { type: 'feature', text: '教师面板新增导出题库功能，支持将题库导出为JSON文件' },
+                    { type: 'feature', text: '可选角色数量扩充，增加展开栏展示所有英雄' },
+                    { type: 'improvement', text: '英雄选择界面优化，添加全英雄模态框' }
+                ]
+            },
+            {
+                version: 'v1.2.0',
+                date: '2026-04-15',
+                changes: [
+                    { type: 'improvement', text: '优化对战题目和选项的字体，提高清晰度和可读性' },
+                    { type: 'improvement', text: '抢答前选项AB在一行CD在一行，居中显示' },
+                    { type: 'improvement', text: '四个选项使用四种颜色区分，方便学生直观观察' },
+                    { type: 'improvement', text: '选项A与选项C左对齐，选项B与选项D左对齐' }
+                ]
+            },
+            {
+                version: 'v1.1.0',
+                date: '2026-04-05',
+                changes: [
+                    { type: 'feature', text: '新增教师评讲功能，查看答题记录和详情' },
+                    { type: 'feature', text: '教师面板新增题目编辑和管理功能' },
+                    { type: 'improvement', text: 'UI界面优化，提升用户体验' }
+                ]
+            },
+            {
+                version: 'v1.0.0',
+                date: '2026-04-01',
+                changes: [
+                    { type: 'feature', text: '初始化游戏功能，支持双人对战' },
+                    { type: 'feature', text: '实现角色选择和战斗系统' },
+                    { type: 'feature', text: '基础题库管理功能' }
+                ]
+            }
+        ];
+        
+        // 显示更新日志
+        function showChangelog() {
+            const modal = document.getElementById('changelog-modal');
+            const content = document.getElementById('changelog-content');
+            
+            // 渲染更新日志内容
+            content.innerHTML = '';
+            
+            CHANGELOG.forEach(item => {
+                const changelogItem = document.createElement('div');
+                changelogItem.className = 'changelog-item';
+                
+                const versionHtml = `<div class="changelog-version">
+                    <span>${item.version}</span>
+                    <span class="changelog-date">${item.date}</span>
+                </div>`;
+                
+                const changesHtml = `<ul class="changelog-changes">
+                    ${item.changes.map(change => `
+                        <li class="${change.type}">${change.text}</li>
+                    `).join('')}
+                </ul>`;
+                
+                changelogItem.innerHTML = versionHtml + changesHtml;
+                content.appendChild(changelogItem);
+            });
+            
+            modal.classList.add('active');
+            playSound('select');
+        }
+        
+        // 隐藏更新日志
+        function hideChangelog() {
+            const modal = document.getElementById('changelog-modal');
+            modal.classList.remove('active');
+            playSound('select');
+        }
+        
+        document.getElementById('exit-review-btn').addEventListener('click', () => {
+            switchScreen('game-over-screen');
+            playSound('select');
+        });
+
+        document.getElementById('buzz-p1').addEventListener('mousedown', () => playerBuzz('p1'));
+        document.getElementById('buzz-p2').addEventListener('mousedown', () => playerBuzz('p2'));
+        
+        // 键盘支持
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'a') playerBuzz('p1');
+            if (e.key.toLowerCase() === 'l') playerBuzz('p2');
+        });
+        
+        // 教师面板触屏滑动事件
+        const tpScreen = document.getElementById('teacher-panel-screen');
+        const tpScrollUp = document.getElementById('teacher-scroll-up');
+        const tpScrollDown = document.getElementById('teacher-scroll-down');
+        
+        tpScrollUp.onclick = () => tpScreen.scrollBy({ top: -300, behavior: 'smooth' });
+        tpScrollDown.onclick = () => tpScreen.scrollBy({ top: 300, behavior: 'smooth' });
+        
+        tpScrollUp.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            tpScreen.scrollBy({ top: -300, behavior: 'smooth' });
+        });
+        tpScrollDown.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            tpScreen.scrollBy({ top: 300, behavior: 'smooth' });
+        });
+        
+        // 教师面板事件
+        document.getElementById('back-to-select').addEventListener('click', () => {
+            switchScreen('char-select-screen');
+            playSound('select');
+        });
+        
+        document.getElementById('add-question-btn').addEventListener('click', () => {
+            showQuestionForm(false);
+        });
+        
+        document.getElementById('save-question-btn').addEventListener('click', saveQuestion);
+        document.getElementById('cancel-question-btn').addEventListener('click', () => {
+            hideQuestionForm();
+            playSound('select');
+        });
+        
+        document.getElementById('new-bank-btn').addEventListener('click', createNewBank);
+        document.getElementById('export-bank-btn').addEventListener('click', exportCurrentBank);
+        document.getElementById('delete-bank-btn').addEventListener('click', deleteCurrentBank);
+        document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+        
+        document.getElementById('save-sounds-btn').addEventListener('click', () => {
+            saveToLocalStorage();
+            playSound('save');
+            alert('音效配置已保存！');
+            document.getElementById('sound-config-modal').classList.remove('active');
+        });
+        
+        document.getElementById('hero-sound-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && currentConfigHeroImg) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    if (currentConfigUploadType === 'attack') {
+                        customHeroSounds[currentConfigHeroImg] = evt.target.result;
+                    } else if (currentConfigUploadType === 'wrong') {
+                        customWrongSounds[currentConfigHeroImg] = evt.target.result;
+                    }
+                    renderHeroSoundConfigList();
+                    // 将会在点击 保存所有设置 时持久化
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = ''; // 允许重复上传同一个文件
+        });
+        
+        document.getElementById('clear-sounds-btn').addEventListener('click', () => {
+            if (confirm('确认要清空所有自定义英雄音效吗？（需要点击“保存所有配置”生效）')) {
+                customHeroSounds = {};
+                customWrongSounds = {};
+                renderHeroSoundConfigList();
+                playSound('select');
+            }
+        });
+        
+        // 更新日志事件
+        document.getElementById('changelog-modal-close').addEventListener('click', hideChangelog);
+        document.getElementById('changelog-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('changelog-modal')) {
+                hideChangelog();
+            }
+        });
+
+        // 启动
+        loadFromLocalStorage();
+        init();
+
+    </script>
+</body>
+</html>
