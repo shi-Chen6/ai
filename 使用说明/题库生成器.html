@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单选题转JSON格式转换器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            font-size: 14px;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        
+        .button-group {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .parse-btn {
+            background-color: #2196F3;
+        }
+        
+        .parse-btn:hover {
+            background-color: #1976D2;
+        }
+        
+        .format-btn {
+            background-color: #9C27B0;
+            color: white;
+        }
+        
+        .format-btn:hover {
+            background-color: #7B1FA2;
+        }
+        
+        .export-btn {
+            background-color: #FF9800;
+        }
+        
+        .export-btn:hover {
+            background-color: #F57C00;
+        }
+        
+        .preview-section {
+            margin-top: 30px;
+        }
+        
+        .preview-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .preview-box {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .preview-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .question-preview {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #fafafa;
+        }
+        
+        .json-preview {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8f8f8;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .question-item {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .option-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .option-item {
+            margin-bottom: 5px;
+        }
+        
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>单选题转JSON格式转换器</h1>
+        
+        <div class="input-section">
+            <label for="inputText">请输入单选题目（支持多种格式）：</label>
+            <textarea id="inputText" placeholder="请在此粘贴包含单选题目的文本..."></textarea>
+        </div>
+        
+        <div class="button-group">
+            <button class="format-btn" onclick="formatText()">一键排版</button>
+            <button class="parse-btn" onclick="parseQuestions()">解析题目</button>
+            <button onclick="copyToClipboard()">复制JSON</button>
+            <button class="export-btn" onclick="exportAsJsonFile()">导出JSON文件</button>
+        </div>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+        
+        <div class="preview-section">
+            <div class="preview-container">
+                <div class="preview-box">
+                    <div class="preview-title">题目预览：</div>
+                    <div id="questionPreview" class="question-preview"></div>
+                </div>
+                
+                <div class="preview-box">
+                    <div class="preview-title">JSON输出：</div>
+                    <div id="jsonPreview" class="json-preview"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- JSON字段解释 -->
+        <div class="preview-section" style="margin-top: 40px;">
+            <div class="preview-title">JSON字段说明：</div>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #dee2e6;">
+                <pre style="font-family: monospace; font-size: 14px;">{
+  "q": "题目内容",       // 题目的具体内容
+  "o": [                // 选项数组，按顺序对应A、B、C、D选项
+    "选项A内容",         // A选项内容
+    "选项B内容",         // B选项内容
+    "选项C内容",         // C选项内容
+    "选项D内容"          // D选项内容
+  ],
+  "a": 0,               // 答案索引，0=A, 1=B, 2=C, 3=D
+  "analysis": ""        // 解析内容（可选），对题目的详细解释说明
+}</pre>
+                <p style="margin-top: 10px; color: #666;"><strong>示例：</strong></p>
+                <pre style="font-family: monospace; font-size: 14px;">{
+  "q": "以下哪个不是JavaScript的数据类型？",
+  "o": [
+    "String",
+    "Boolean",
+    "Float",
+    "Number"
+  ],
+  "a": 2,  // 表示正确答案是选项C
+  "analysis": "JavaScript的数据类型包括：String（字符串）、Boolean（布尔值）、Number（数值，包括整数和浮点数）等。Float不是JavaScript的独立数据类型，浮点数统一用Number表示。"
+}</pre>
+            </div>
+        </div>
+        
+        <!-- JSON字段解释 -->
+        <div class="preview-section" style="margin-top: 40px;">
+            <div class="preview-title">JSON字段说明：</div>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #dee2e6;">
+                <pre style="font-family: monospace; font-size: 14px;">{
+  "q": "题目内容",       // 题目的具体内容
+  "o": [                // 选项数组，按顺序对应A、B、C、D选项
+    "选项A内容",         // A选项内容
+    "选项B内容",         // B选项内容
+    "选项C内容",         // C选项内容
+    "选项D内容"          // D选项内容
+  ],
+  "a": 0,               // 答案索引，0=A, 1=B, 2=C, 3=D
+  "analysis": ""        // 解析内容（可选），对题目的详细解释说明
+}</pre>
+                <p style="margin-top: 10px; color: #666;"><strong>示例：</strong></p>
+                <pre style="font-family: monospace; font-size: 14px;">{
+  "q": "以下哪个不是JavaScript的数据类型？",
+  "o": [
+    "String",
+    "Boolean",
+    "Float",
+    "Number"
+  ],
+  "a": 2,  // 表示正确答案是选项C
+  "analysis": "JavaScript的数据类型包括：String（字符串）、Boolean（布尔值）、Number（数值，包括整数和浮点数）等。Float不是JavaScript的独立数据类型，浮点数统一用Number表示。"
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData = [];
+
+        async function formatText() {
+            const inputTextObj = document.getElementById('inputText');
+            const inputText = inputTextObj.value;
+            
+            if (!inputText.trim()) {
+                showMessage('请输入需要排版的题目文本', 'error');
+                return;
+            }
+
+            showMessage('AI 正在匹配格式并进行排版优化，请稍候...', 'success');
+            const btn = document.querySelector('.format-btn');
+            const originalBtnText = btn.textContent;
+            btn.textContent = '排版中...';
+            btn.disabled = true;
+            
+            try {
+                const prompt = `您是一个强大的文本排版助手。老师输入了一些格式不规范的单项选择题，请你帮他重新排版，以使其能够被正则代码准确解析。
+请遵循以下排版规范：
+1. 每道题目之间用一个空行隔开。
+2. 题目内容第一行必须以数字序号和点号开始，例如 "1. "，如果有括号请自动把答案提取出来，如果原题有括号内填空如"（ ）"则保留。
+3. 选项分为4行，每行仅一个选项，并且以大写字母加点号开头，如 "A. "、"B. "、"C. "、"D. "。
+4. 每道题目的最后一行请标明答案，格式为 "答案：X"（X为A、B、C、D中的一个）。请从原文本型中提取出答案（如果有的话）。
+5. 如果原文本中包含对题目的解析、分析或解释说明，请将其提取并在答案下一行输出，格式为 "解析：XXX"。如果没有解析，则不输出该行。
+6. 直接输出排版好的题目内容，不要输出任何其他的分析（除了题目本身的解析）、解释或多余的文字。
+
+以下是需要排版的原文本：
+${inputText}`;
+
+                const API_KEY = 'sk-e5f5b578f7064ec68c4429d62f42ee2e';
+                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'system', content: '你是专业的题库排版助手。' },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.1
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 响应错误：${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiFormattedText = data.choices[0].message.content.trim();
+                
+                inputTextObj.value = aiFormattedText;
+                showMessage('✨ AI 排版完成！格式已智能优化。', 'success');
+            } catch (error) {
+                showMessage('AI排版时出现错误: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                btn.textContent = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+
+        function parseQuestions() {
+            const inputText = document.getElementById('inputText').value;
+            
+            if (!inputText.trim()) {
+                showMessage('请输入题目内容', 'error');
+                return;
+            }
+            
+            try {
+                parsedData = extractQuestions(inputText);
+                displayResults(parsedData);
+                showMessage(`${parsedData.length} 道题目解析成功！`, 'success');
+            } catch (error) {
+                showMessage('解析过程中出现错误: ' + error.message, 'error');
+            }
+        }
+
+        function extractQuestions(text) {
+            // 分割文本为行
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            
+            const questions = [];
+            let currentQuestion = null;
+            let options = [];
+            let currentAnswer = 0; // 默认答案为A
+            let currentAnalysis = ''; // 用户题目的解析
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // 检查是否是题目开头（数字开头，后面跟点号或括号）
+                const questionMatch = line.match(/^(\d+)[\.\)]\s*(.+)/);
+                
+                if (questionMatch) {
+                    // 如果已经有当前题目，先保存
+                    if (currentQuestion !== null) {
+                        const qObj = {
+                            q: currentQuestion,
+                            o: options,
+                            a: currentAnswer
+                        };
+                        if (currentAnalysis) qObj.analysis = currentAnalysis;
+                        questions.push(qObj);
+                    }
+                    
+                    // 开始新题目
+                    currentQuestion = questionMatch[2];
+                    options = [];
+                    currentAnswer = 0; // 重置默认答案
+                    currentAnalysis = ''; // 重置解析
+                    
+                    // 检查题目行是否包含同一行的选项（ABCD）
+                    const sameLineOptions = extractSameLineOptions(currentQuestion);
+                    if (sameLineOptions.length > 0) {
+                        options = sameLineOptions;
+                        // 从题目内容中移除选项部分
+                        currentQuestion = currentQuestion.replace(/\s*[A-D][\.\)\:\-\s]\s*.+?(?=[A-D][\.\)\:\-\s]|$)/gi, '').trim();
+                    }
+                } else {
+                    // 检查是否是答案行
+                    const answerMatch = line.match(/^(答案|正确答案|正确选项)[：:].*?([A-D])/i);
+                    if (answerMatch && currentQuestion !== null) {
+                        const answerLetter = answerMatch[2].toUpperCase();
+                        currentAnswer = answerLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+                    } 
+                    // 检查是否是选项（A/B/C/D 开头）
+                    else if (line.match(/^([A-D])[\.\)\:\-\s]\s*(.+)/i)) {
+                        const optionMatch = line.match(/^([A-D])[\.\)\:\-\s]\s*(.+)/i);
+                        const optionLetter = optionMatch[1].toUpperCase();
+                        const optionText = optionMatch[2];
+                        
+                        // 确保选项按顺序排列
+                        const optionIndex = optionLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+                        
+                        if (options.length <= optionIndex) {
+                            // 扩展数组长度以容纳新选项
+                            while (options.length <= optionIndex) {
+                                options.push('');
+                            }
+                        }
+                        
+                        options[optionIndex] = optionText;
+                    } else if (line.match(/^解析[：:]\s*(.*)/i)) {
+                        const analysisMatch = line.match(/^解析[：:]\s*(.*)/i);
+                        if (currentQuestion !== null) {
+                            currentAnalysis = analysisMatch[1];
+                        }
+                    } else if (currentQuestion !== null && options.length < 4) {
+                        // 如果是连续的选项内容行，附加到最近的选项
+                        if (options.length > 0) {
+                            const lastOptionIndex = options.length - 1;
+                            if (lastOptionIndex >= 0 && lastOptionIndex < 4) {
+                                if (options[lastOptionIndex]) {
+                                    options[lastOptionIndex] += ' ' + line;
+                                } else {
+                                    options[lastOptionIndex] = line;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 添加最后一个题目
+            if (currentQuestion !== null) {
+                const qObj = {
+                    q: currentQuestion,
+                    o: options.filter(opt => opt !== ''),
+                    a: currentAnswer
+                };
+                if (currentAnalysis) qObj.analysis = currentAnalysis;
+                questions.push(qObj);
+            }
+            
+            return questions;
+        }
+        
+        // 从同一行中提取选项
+        function extractSameLineOptions(text) {
+            const options = ['', '', '', ''];
+            const optionRegex = /([A-D])[\.\)\:\-\s]\s*([^A-D]+?)(?=[A-D][\.\)\:\-\s]|$)/gi;
+            let match;
+            
+            while ((match = optionRegex.exec(text)) !== null) {
+                const optionLetter = match[1].toUpperCase();
+                const optionText = match[2].trim();
+                const optionIndex = optionLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+                
+                if (optionIndex >= 0 && optionIndex < 4) {
+                    options[optionIndex] = optionText;
+                }
+            }
+            
+            // 过滤空选项
+            return options.filter(opt => opt !== '').length > 0 ? options : [];
+        }
+
+        function displayResults(data) {
+            // 显示题目预览
+            const questionPreview = document.getElementById('questionPreview');
+            questionPreview.innerHTML = '';
+            
+            data.forEach((item, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question-item';
+                
+                const questionText = document.createElement('div');
+                questionText.className = 'question-text';
+                questionText.textContent = `${index + 1}. ${item.q}`;
+                
+                const optionsList = document.createElement('ul');
+                optionsList.className = 'option-list';
+                
+                item.o.forEach((option, optIndex) => {
+                    const optionItem = document.createElement('li');
+                    optionItem.className = 'option-item';
+                    optionItem.textContent = `${String.fromCharCode(65 + optIndex)}. ${option}`;
+                    optionsList.appendChild(optionItem);
+                });
+                
+                // 添加答案选择下拉菜单
+                const answerSelect = document.createElement('div');
+                answerSelect.style.marginTop = '10px';
+                answerSelect.innerHTML = `
+                    <label style="font-size: 14px; margin-right: 10px;">正确答案：</label>
+                    <select onchange="updateAnswer(${index}, this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
+                        <option value="0" ${item.a === 0 ? 'selected' : ''}>A</option>
+                        <option value="1" ${item.a === 1 ? 'selected' : ''}>B</option>
+                        <option value="2" ${item.a === 2 ? 'selected' : ''}>C</option>
+                        <option value="3" ${item.a === 3 ? 'selected' : ''}>D</option>
+                    </select>
+                `;
+                
+                questionDiv.appendChild(questionText);
+                questionDiv.appendChild(optionsList);
+                questionDiv.appendChild(answerSelect);
+                
+                if (item.analysis) {
+                    const analysisDiv = document.createElement('div');
+                    analysisDiv.style.marginTop = '10px';
+                    analysisDiv.style.fontSize = '13px';
+                    analysisDiv.style.color = '#666';
+                    analysisDiv.style.backgroundColor = '#f0f8ff';
+                    analysisDiv.style.padding = '8px';
+                    analysisDiv.style.borderRadius = '4px';
+                    analysisDiv.innerHTML = `<strong>解析：</strong> ${item.analysis}`;
+                    questionDiv.appendChild(analysisDiv);
+                }
+
+                questionPreview.appendChild(questionDiv);
+            });
+            
+            // 显示JSON预览
+            const jsonPreview = document.getElementById('jsonPreview');
+            jsonPreview.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function updateAnswer(questionIndex, answerValue) {
+            if (parsedData[questionIndex]) {
+                parsedData[questionIndex].a = parseInt(answerValue);
+                // 更新JSON预览
+                const jsonPreview = document.getElementById('jsonPreview');
+                jsonPreview.textContent = JSON.stringify(parsedData, null, 2);
+            }
+        }
+
+        function copyToClipboard() {
+            if (parsedData.length === 0) {
+                showMessage('请先解析题目', 'error');
+                return;
+            }
+            
+            const jsonStr = JSON.stringify(parsedData, null, 2);
+            
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                showMessage('JSON已复制到剪贴板！', 'success');
+            }).catch(err => {
+                // 降级方案：使用旧方法复制
+                const textArea = document.createElement('textarea');
+                textArea.value = jsonStr;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showMessage('JSON已复制到剪贴板！', 'success');
+            });
+        }
+
+        function exportAsJsonFile() {
+            if (parsedData.length === 0) {
+                showMessage('请先解析题目', 'error');
+                return;
+            }
+            
+            const jsonStr = JSON.stringify(parsedData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'questions.json';
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            showMessage('JSON文件已下载！', 'success');
+        }
+
+        function showMessage(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+            
+            // 3秒后自动隐藏消息
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // 示例数据填充
+        window.onload = function() {
+            const sampleText = `1. 以下哪个不是JavaScript的数据类型？
+A. String
+B. Boolean
+C. Float
+D. Number
+答案：C
+解析：Float是浮点数类型，不是整数类型。(可选)
+
+2. CSS的全称是什么？
+A) 层叠样式表
+B) 计算机样式系统
+C) 级联符号系统
+D) 层次样式符号
+正确答案：A
+解析：CSS是层叠样式表，用于定义网页的样式。(可选)
+
+3. HTML中用于定义超链接的标签是：
+A. <link>
+B. <href>
+C. <a>
+D. <url>`;
+            
+            document.getElementById('inputText').value = sampleText;
+        };
+    </script>
+</body>
+</html>

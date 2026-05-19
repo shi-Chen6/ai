@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>单选题PK小游戏 · 使用说明</title>
+    <!-- Font Awesome 6 (免费) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, system-ui, -apple-system, sans-serif;
+            background: #f0f4f8;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        /* 网格布局：左侧目录，右侧内容 */
+        .docs-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* 左侧目录样式 */
+        .sidebar {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2rem 1rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        }
+
+        .sidebar h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            border-bottom: 2px solid #3b4b62;
+            padding-bottom: 0.75rem;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar li {
+            margin-bottom: 0.4rem;
+        }
+
+        .sidebar a {
+            color: #cbd5e1;
+            text-decoration: none;
+            display: block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar a:hover {
+            background: #2d3b4f;
+            color: white;
+            border-left-color: #60a5fa;
+        }
+
+        .sidebar a.active {
+            background: #2d3b4f;
+            color: white;
+            border-left-color: #3b82f6;
+            font-weight: 500;
+        }
+
+        .sidebar .level-2 {
+            padding-left: 1.8rem;
+            font-size: 0.88rem;
+        }
+
+        .sidebar .level-3 {
+            padding-left: 2.8rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* 右侧主内容 */
+        .content {
+            padding: 2.5rem 3rem;
+            max-width: 1000px;
+            background: #f8fafc;
+        }
+
+        .content h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #0f172a;
+            border-left: 8px solid #3b82f6;
+            padding-left: 1.5rem;
+        }
+
+        .content h2 {
+            font-size: 1.8rem;
+            margin: 2.5rem 0 1.2rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #d1d9e6;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            scroll-margin-top: 1rem;
+        }
+
+        .content h3 {
+            font-size: 1.4rem;
+            margin: 1.8rem 0 1rem 0;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            scroll-margin-top: 1rem;
+        }
+
+        .content h4 {
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.5rem 0;
+            color: #334155;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            border: 1px solid #e9eef3;
+            transition: all 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 28px rgba(0,0,0,0.06);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 1.2rem;
+            color: #0f172a;
+        }
+
+        .badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* 代码块 */
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.2rem;
+            border-radius: 16px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 1.2rem 0;
+            position: relative;
+        }
+
+        .code-block-wrapper {
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+            border: 1px solid #4b5e77;
+            z-index: 5;
+        }
+
+        .copy-btn:hover {
+            background: #3b4b62;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            font-weight: 600;
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        /* 折叠 details 美化 */
+        details {
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 0.8rem 1.5rem;
+            margin: 1.5rem 0;
+            border: 1px solid #dae2ec;
+        }
+
+        details summary {
+            font-weight: 600;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #1e293b;
+            padding: 0.5rem 0;
+        }
+
+        details[open] summary {
+            margin-bottom: 1rem;
+        }
+
+        /* 提示框 */
+        .tip {
+            background: #e6f7ff;
+            border-left: 6px solid #1890ff;
+            padding: 1rem 1.8rem;
+            border-radius: 12px;
+            margin: 1.2rem 0;
+        }
+
+        .warning {
+            background: #fff7e6;
+            border-left: 6px solid #fa8c16;
+        }
+
+        .kbd {
+            background: #2d2d2d;
+            color: #eee;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: bold;
+            display: inline-block;
+            margin: 0 4px;
+        }
+
+        /* 按钮模拟 */
+        .mock-btn {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #1e293b;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid #b9c7da;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        hr {
+            margin: 2rem 0;
+            border: none;
+            border-top: 2px dashed #cbd5e1;
+        }
+
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        /* 顶部导航栏 */
+        .top-nav {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 12px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .top-nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+        }
+        .top-nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            color: #cbd5e1;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .top-nav .nav-item:hover {
+            background: #475569;
+            color: white;
+        }
+        .top-nav .nav-item.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 800px) {
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: static;
+                height: auto;
+                width: 100%;
+            }
+            .content {
+                padding: 1.5rem;
+            }
+            .top-nav {
+                padding: 10px 12px;
+            }
+            .top-nav .nav-item {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="top-nav">
+        <div class="top-nav-content">
+            <a href="使用说明.html" class="nav-item active"><i class="fas fa-book-open"></i> 使用说明</a>
+            <a href="项目介绍.html" class="nav-item" id="nav-project"><i class="fas fa-info-circle"></i> 项目介绍</a>
+        </div>
+    </nav>
+<div class="docs-grid">
+    <!-- 左侧目录导航 -->
+    <aside class="sidebar" id="sidebar">
+        <h2><i class="fas fa-list"></i> 使用目录</h2>
+        <ul>
+            <li><a href="#generator" class="nav-link"><i class="fas fa-cube"></i> 题库生成器</a></li>
+            <li><a href="#generator-usage" class="nav-link level-2">📌 使用方法</a></li>
+            <li><a href="#generator-json" class="nav-link level-2">📄 JSON格式</a></li>
+              <li style="margin-top: 0.8rem;"><a href="#ai-analysis" class="nav-link"><i class="fas fa-robot"></i> AI智能分析</a></li>
+            <li><a href="#ai-dashboard" class="nav-link level-2">📊 数据洞察</a></li>
+            <li><a href="#ai-generator" class="nav-link level-2">📝 智能排版</a></li>
+            <li style="margin-top: 0.8rem;"><a href="#game" class="nav-link"><i class="fas fa-gamepad"></i> 对战游戏</a></li>
+            <li><a href="#game-role" class="nav-link level-2">🎭 角色选择</a></li>
+            <li><a href="#game-battle" class="nav-link level-2">⚡ 战斗阶段</a></li>
+            <li><a href="#teacher-panel" class="nav-link level-2">🎓 教师面板</a></li>
+            <li><a href="#teacher-review" class="nav-link level-2">📋 教师评讲</a></li>
+            <li><a href="#shortcuts" class="nav-link level-2">⌨️ 快捷键</a></li>
+            <li><a href="#touch" class="nav-link level-2">👆 触屏操作</a></li>
+            <li><a href="#notice" class="nav-link level-2">⚠️ 注意事项</a></li>
+            <li><a href="#faq" class="nav-link level-2">❓ 常见问题</a></li>
+            <li style="margin-top: 0.8rem;"><a href="#support" class="nav-link"><i class="fas fa-headset"></i> 技术支持</a></li>
+            <li style="margin-top: 0.8rem;"><a href="项目介绍.html" class="nav-link" id="sidebar-project"><i class="fas fa-info-circle"></i> 项目介绍</a></li>
+        </ul>
+    </aside>
+
+    <!-- 右侧主要内容 -->
+    <main class="content">
+        <h1>📘 单选题PK小游戏 · 使用说明</h1>
+        <p style="font-size: 1.2rem; color: #475569; margin-bottom: 2rem;">适用于教师、对战玩家 · 版本 v3.2.0 <span class="badge">更新于 2026-05-19</span></p>
+
+        <!-- 题库生成器部分 -->
+        <section id="generator">
+            <h2><i class="fas fa-cube" style="color:#3b82f6;"></i> 题库生成器使用说明</h2>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-info-circle"></i> 概述</div>
+                <p>题库生成器是一个将文本格式的单选题转换为JSON格式的工具，方便导入到对战游戏中使用。</p>
+            </div>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-star"></i> 功能特点</div>
+                <ul style="margin-left: 1.5rem;">
+                    <li>支持多种题目格式解析</li>
+                    <li><strong>AI智能排版</strong>：接入 DeepSeek 大模型，自动将不规范题目文本标准化排版</li>
+                    <li>自动识别题目、选项和答案</li>
+                    <li>智能提取题目解析和答案标注</li>
+                    <li>可视化预览和编辑</li>
+                    <li>一键复制或导出JSON文件</li>
+                </ul>
+            </div>
+
+            <div id="generator-usage" class="card">
+                <div class="card-header"><i class="fas fa-list-ol"></i> 使用方法</div>
+                <h4>1. 准备题目文本</h4>
+                <p><strong>格式一：标准格式</strong></p>
+                <pre>1. 以下哪个不是JavaScript的数据类型？
+A. String
+B. Boolean
+C. Float
+D. Number
+答案：C
+
+2. CSS的全称是什么？
+A. 层叠样式表
+B. 计算机样式系统
+C. 级联符号系统
+D. 层次样式符号
+正确答案：A</pre>
+                <p><strong>格式二：紧凑格式</strong></p>
+                <pre>1. HTML中用于定义超链接的标签是：
+A. &lt;link&gt;
+B. &lt;href&gt;
+C. &lt;a&gt;
+D. &lt;url&gt;
+答案：C</pre>
+
+                <h4>2. 一键排版（AI智能格式化）</h4>
+                <p>如果题目格式不统一、不规整，可直接使用 <span class="mock-btn">一键排版</span> 功能：</p>
+                <ol>
+                    <li>将任意格式的题目文本粘贴到输入框</li>
+                    <li>点击 <span class="mock-btn">一键排版</span> 按钮</li>
+                    <li>系统调用 <strong>DeepSeek AI大模型</strong> 自动识别题目结构，将不规范格式统一标准化</li>
+                    <li>AI会自动：提取答案标注、拆分同行的选项、保留解析说明、统一序号和选项格式</li>
+                    <li>等待数秒即可获得排版整齐的规范题目文本</li>
+                </ol>
+
+                <h4>3. 解析题目</h4>
+                <ol>
+                    <li>排版完成后，检查预览效果</li>
+                    <li>点击 <span class="mock-btn">解析题目</span> 按钮</li>
+                    <li>查看解析结果和预览</li>
+                </ol>
+
+                <h4>4. 校对答案</h4>
+                <p>在题目预览区，每道题下方有答案选择下拉框，点击下拉框修改正确答案，JSON输出会自动更新。</p>
+
+                <h4>5. 导出题库</h4>
+                <ul>
+                    <li><span class="mock-btn">复制JSON</span>：点击按钮将内容复制到剪贴板</li>
+                    <li><span class="mock-btn">导出JSON文件</span>：下载 <code>.json</code> 文件</li>
+                </ul>
+            </div>
+
+            <div id="generator-json" class="card">
+                <div class="card-header"><i class="fas fa-file-code"></i> JSON格式说明</div>
+                <div class="code-block-wrapper">
+                    <pre id="json-example">{
+  "q": "题目内容",
+  "o": [
+    "选项A内容",
+    "选项B内容",
+    "选项C内容",
+    "选项D内容"
+  ],
+  "a": 0
+}</pre>
+                    <button class="copy-btn" data-target="json-example"><i class="far fa-copy"></i> 复制</button>
+                </div>
+                <p><code>a</code> 索引：0=A, 1=B, 2=C, 3=D</p>
+            </div>
+        </section>
+
+        <!-- 对战游戏部分 -->
+        <section id="game">
+            <h2><i class="fas fa-gamepad" style="color:#e11d48;"></i> 单选题对战游戏使用说明</h2>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-desktop"></i> 系统要求</div>
+                <p>现代浏览器（Chrome、Firefox、Edge等），支持触屏操作（适配希沃白板等教学设备）。</p>
+            </div>
+
+            <div id="game-role" class="card">
+                <div class="card-header"><i class="fas fa-user-plus"></i> 角色选择</div>
+                <ol>
+                    <li>打开 <span class="mock-btn">单选题对战游戏.html</span></li>
+                    <li>P1和P2分别选择自己的角色</li>
+                    <li>点击 <span class="mock-btn">查看所有英雄</span> 浏览全部可选角色</li>
+                    <li>选择完成后点击 <span class="mock-btn">开始对战</span></li>
+                </ol>
+                <h4>新增功能</h4>
+                <ul style="margin-left: 1.5rem;">
+                    <li><strong>音量调节</strong>：点击 <span class="mock-btn">🔊 音量调节</span> 按钮，可独立调节选角BGM、战斗BGM、系统音效和英雄语音音量</li>
+                    <li><strong>使用说明</strong>：点击 <span class="mock-btn">📘 使用说明</span> 按钮，打开详细的使用指南文档</li>
+                    <li><strong>音效配置</strong>：点击 <span class="mock-btn">🎵 音效配置</span> 按钮，为英雄自定义进攻和答错音效</li>
+                    <li><strong>更新日志</strong>：点击 <span class="mock-btn">📋 更新日志</span> 按钮，查看版本迭代信息</li>
+                </ul>
+            </div>
+
+            <div id="game-battle" class="card">
+                <div class="card-header"><i class="fas fa-bolt"></i> 战斗阶段</div>
+                <ul>
+                    <li><strong>题目展示</strong>：中央显示题目和选项，抢答前选项AB在一行CD在一行，居中显示</li>
+                    <li><strong>抢答环节</strong>：P1按键盘 <span class="kbd">A</span> 或点击左侧按钮；P2按 <span class="kbd">L</span> 或右侧按钮</li>
+                    <li><strong>答题环节</strong>：抢答成功的玩家在规定时间内选择答案，答题框采用两栏布局，提供更充足的显示空间</li>
+                    <li><strong>战斗反馈</strong>：答对攻击对方；答错自己扣血；超时根据设置惩罚</li>
+                </ul>
+                <h4>答题界面优化</h4>
+                <ul style="margin-left: 1.5rem;">
+                    <li>答题框宽度扩展至1100px，提供更充足的显示空间</li>
+                    <li>选项采用两栏布局，提升空间利用率</li>
+                    <li>选项字体大小优化为24px，配合两栏布局提升阅读体验</li>
+                    <li>四个选项使用四种颜色区分，方便学生直观观察</li>
+                    <li>选项A与选项C左对齐，选项B与选项D左对齐</li>
+                </ul>
+                <h4>游戏结束</h4>
+                <p>任意一方血量归零，显示胜利者和统计，可点击 <span class="mock-btn">教师评讲</span> 查看答题详情。</p>
+            </div>
+
+            <!-- 教师面板 -->
+            <div id="teacher-panel" class="card">
+                <div class="card-header"><i class="fas fa-chalkboard-teacher"></i> 教师面板功能</div>
+                <p>在角色选择界面点击 <span class="mock-btn">🎓 教师面板</span> 进入。</p>
+                <h4>题库管理</h4>
+                <ul>
+                    <li>切换题库：点击题库选择按钮</li>
+                    <li>新建题库：<span class="mock-btn">+ 新建题库</span></li>
+                    <li>导入题库：<span class="mock-btn">+ 导入题库</span> 上传JSON</li>
+                    <li>导出题库：<span class="mock-btn">📤 导出题库</span></li>
+                    <li>删除题库：<span class="mock-btn">删除当前题库</span></li>
+                </ul>
+                <h4>题目编辑</h4>
+                <ul>
+                    <li>添加题目：<span class="mock-btn">+ 添加新题目</span></li>
+                    <li>编辑题目：点击题目列表中的编辑按钮</li>
+                    <li>删除题目：在编辑界面点击删除</li>
+                </ul>
+                <h4>游戏设置</h4>
+                <table>
+                    <tr><th>设置项</th><th>说明</th><th>默认值</th></tr>
+                    <tr><td>答对伤害值</td><td>答对时攻击对方的伤害</td><td>25点</td></tr>
+                    <tr><td>答错自伤值</td><td>答错时自己受到的伤害</td><td>15点</td></tr>
+                    <tr><td>抢答错误惩罚</td><td>抢答后答错的惩罚方式</td><td>无惩罚</td></tr>
+                    <tr><td>抢答后答题时限</td><td>抢答后的答题时间（秒）</td><td>10秒</td></tr>
+                    <tr><td>超时未答惩罚</td><td>超时未答题的惩罚方式</td><td>扣血</td></tr>
+                    <tr><td>超时扣血值</td><td>超时未答时扣除的血量</td><td>10点</td></tr>
+                    <tr><td>音效开关</td><td>游戏音效的开启/关闭</td><td>开启</td></tr>
+                </table>
+                <div class="tip"><i class="fas fa-exclamation-triangle"></i> 修改设置后必须点击 <span class="mock-btn">保存设置</span> 生效。</div>
+            </div>
+
+            <!-- 教师评讲 -->
+            <div id="teacher-review" class="card">
+                <div class="card-header"><i class="fas fa-clipboard-list"></i> 教师评讲功能</div>
+                <p>游戏结束后点击 <span class="mock-btn">教师评讲</span> 进入评讲模式。</p>
+                <ul>
+                    <li>左侧答题记录列表</li>
+                    <li>右侧显示题目详情：结果、题目、选项（正确答案绿色高亮，错误选择红色标记）、教师点评区域</li>
+                </ul>
+            </div>
+
+            <!-- 快捷键 -->
+            <div id="shortcuts" class="card">
+                <div class="card-header"><i class="fas fa-keyboard"></i> 快捷键说明</div>
+                <table>
+                    <tr><th>操作</th><th>P1</th><th>P2</th></tr>
+                    <tr><td>抢答</td><td><span class="kbd">A</span></td><td><span class="kbd">L</span></td></tr>
+                </table>
+            </div>
+
+            <!-- 触屏操作 -->
+            <div id="touch" class="card">
+                <div class="card-header"><i class="fas fa-hand-pointer"></i> 触屏操作说明</div>
+                <p>完全支持触屏，适配希沃白板：点击按钮进行选择和确认；在“查看所有英雄”界面滑动浏览；所有按钮支持触摸事件。</p>
+            </div>
+
+            <!-- 注意事项 -->
+            <div id="notice" class="card warning">
+                <div class="card-header"><i class="fas fa-exclamation-circle"></i> 注意事项</div>
+                <ul>
+                    <li>建议使用最新版浏览器</li>
+                    <li>游戏音效需要用户交互后才能自动播放（点击任意位置激活）</li>
+                    <li>题库数据保存在浏览器本地存储中，定期导出备份</li>
+                </ul>
+            </div>
+
+            <!-- 常见问题（折叠） -->
+            <div id="faq">
+                <details>
+                    <summary><i class="fas fa-question-circle"></i> 常见问题 (点击展开)</summary>
+                    <div style="margin-top: 1rem;">
+                        <p><strong>Q: 游戏没有声音？</strong><br>A: 现代浏览器限制自动播放，点击任意位置激活音频。可通过音量调节功能调整各类型音量。</p>
+                        <p><strong>Q: 如何添加自己的题目？</strong><br>A: 使用题库生成器转换为JSON，然后在教师面板导入。</p>
+                        <p><strong>Q: 游戏数据会丢失吗？</strong><br>A: 保存在浏览器本地，清除数据会导致丢失，建议定期导出备份。</p>
+                        <p><strong>Q: 支持多少道题目？</strong><br>A: 理论上不限，建议每个题库保持在100道以内以保证加载速度。</p>
+                        <p><strong>Q: 如何自定义英雄音效？</strong><br>A: 点击音效配置按钮，为英雄上传本地音频文件作为进攻和答错音效。</p>
+                        <p><strong>Q: 答题框显示异常怎么办？</strong><br>A: 系统已优化答题框显示，支持长题目内容完整显示，如仍有问题请刷新页面。</p>
+                        <p><strong>Q: AI智能分析和AI排版如何使用？</strong><br>A: 两者均使用DeepSeek大模型驱动。数据大屏中点击右下角"AI智能分析"按钮即可获得数据洞察报告；题库生成器中点击"一键排版"即可自动标准化题目格式。需要网络连接。</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- AI智能分析部分 -->
+        <section id="ai-analysis">
+            <h2><i class="fas fa-robot" style="color:#a78bfa;"></i> AI 智能分析功能</h2>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-info-circle"></i> 概述</div>
+                <p>本项目在两个关键环节接入了 <strong>DeepSeek 大语言模型</strong>，分别用于<strong>数据智能洞察</strong>和<strong>题目智能排版</strong>，大幅提升了教师的工作效率和数据分析深度。</p>
+            </div>
+
+            <div id="ai-dashboard" class="card">
+                <div class="card-header"><i class="fas fa-chart-line"></i> 数据大屏 · AI智能洞察</div>
+                <h4>功能入口</h4>
+                <p>打开 <span class="mock-btn">数据大屏.html</span>，点击右下角紫色悬浮按钮 <span class="mock-btn" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6); color:#fff;">✨ AI 智能分析</span></p>
+
+                <h4>AI分析内容</h4>
+                <p>系统自动采集当前数据大屏中的所有核心指标（参与玩家数、整体正确率、总对战场次、TOP3胜场玩家、TOP3易错题目等），发送给 DeepSeek 大模型进行深度分析，输出包含三个模块的结构化报告：</p>
+                <ul style="margin-left: 1.5rem;">
+                    <li><strong>业务洞察</strong>：基于数据提炼关键趋势和发现</li>
+                    <li><strong>问题诊断</strong>：识别当前教学中的潜在问题区域</li>
+                    <li><strong>优化建议</strong>：给出针对性的教学策略改进建议</li>
+                </ul>
+                <p>教师可以在弹窗中阅读 AI 生成的分析报告，也可以点击 <span class="mock-btn">重新分析</span> 刷新结果。分析结果以 Markdown 格式排版，清晰易读。</p>
+            </div>
+
+            <div id="ai-generator" class="card">
+                <div class="card-header"><i class="fas fa-magic"></i> 题库生成器 · AI智能排版</div>
+                <h4>功能入口</h4>
+                <p>打开 <span class="mock-btn">题库生成器.html</span>，在文本框粘贴任意格式的题目后，点击 <span class="mock-btn" style="background:#9C27B0; color:#fff;">一键排版</span></p>
+
+                <h4>AI排版能力</h4>
+                <p>教师输入的题目格式往往千差万别（选项混在同一行、答案标注不明、序号缺失等）。AI排版调用 DeepSeek 大模型，自动完成以下标准化处理：</p>
+                <ul style="margin-left: 1.5rem;">
+                    <li>统一题目序号格式（数字 + 点号）</li>
+                    <li>将同行选项拆分为4行独立选项</li>
+                    <li>自动提取答案标注（如"答案：C"）</li>
+                    <li>保留原题中的填空括号</li>
+                    <li>提取并保留题目解析/分析说明</li>
+                    <li>题目间自动添加空行分隔</li>
+                </ul>
+                <div class="tip"><i class="fas fa-lightbulb"></i> <strong>使用技巧</strong>：即使格式非常杂乱的Word文档题目，AI排版也能识别并标准化。排版完成后可直接点击"解析题目"进行JSON转换。</div>
+            </div>
+        </section>
+
+        <!-- 技术支持 -->
+        <section id="support">
+            <h2><i class="fas fa-headset"></i> 技术支持</h2>
+            <div class="card">
+                <p>如有问题或建议，请查看更新日志了解最新功能，或联系技术支持。</p>
+                <p><strong>版本</strong>：v3.2.0 ｜ <strong>更新日期</strong>：2026-05-19</p>
+                <hr>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <p><i class="fas fa-envelope"></i> 反馈微信：teach__chen</p>
+                    <img src="https://img.meituan.net/content/5b3e2ae24762a3f78b01e968e65ac431238928.png" alt="反馈微信二维码" style="width: 120px; height: 120px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>© 单选题PK小游戏 · 使用文档 · 可在游戏内教师面板获取最新版本</p>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">本游戏为非盈利性质，所有图片与音频素材均来源于网络。若涉及侵权，请联系我们及时移除。</p>
+        </footer>
+    </main>
+</div>
+
+<!-- 交互脚本 -->
+<script>
+    (function() {
+        // 平滑滚动 + 目录高亮
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = [];
+
+        // 收集所有目标区域 (id) - 但排除外部链接
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                const targetId = href.substring(1); // 去掉 #
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    sections.push({
+                        id: targetId,
+                        element: targetEl,
+                        link: link
+                    });
+                }
+            }
+        });
+
+        // 滚动高亮
+        function highlightNav() {
+            const scrollPos = window.scrollY + 100; // 偏移量
+            let currentSection = null;
+
+            for (let sec of sections) {
+                if (sec.element.offsetTop <= scrollPos) {
+                    currentSection = sec;
+                } else {
+                    break;
+                }
+            }
+
+            navLinks.forEach(link => link.classList.remove('active'));
+            if (currentSection) {
+                currentSection.link.classList.add('active');
+            }
+        }
+
+        window.addEventListener('scroll', highlightNav);
+        window.addEventListener('load', highlightNav);
+
+        // 处理导航链接点击
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                // 如果是内部锚点链接
+                if (href && href.startsWith('#')) {
+                    e.preventDefault();
+                    const targetId = href.substring(1);
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                // 如果是外部链接，不做preventDefault，让浏览器正常跳转
+            });
+        });
+
+        // 复制代码功能
+        const copyBtn = document.querySelector('.copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const codeEl = document.getElementById(targetId);
+                if (codeEl) {
+                    const text = codeEl.innerText;
+                    navigator.clipboard.writeText(text).then(() => {
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    }).catch(err => {
+                        alert('复制失败，请手动复制');
+                    });
+                }
+            });
+        }
+
+        // 错误处理：验证目标页面是否存在
+        function validateLinks() {
+            const projectLink = document.getElementById('nav-project');
+            const sidebarProjectLink = document.getElementById('sidebar-project');
+            
+            // 添加点击事件验证
+            [projectLink, sidebarProjectLink].forEach(link => {
+                if (link) {
+                    link.addEventListener('click', function(e) {
+                        // 这里我们可以添加一些简单的错误提示
+                        // 但实际上，浏览器会处理404错误
+                        console.log('正在跳转到项目介绍页面...');
+                    });
+                }
+            });
+        }
+
+        validateLinks();
+
+        // 处理移动端目录跟随，简单加个active效果
+    })();
+</script>
+
+<!-- 额外样式微调 -->
+<style>
+    /* 美化代码块内的复制按钮位置 */
+    .code-block-wrapper {
+        position: relative;
+    }
+    .copy-btn i {
+        pointer-events: none;
+    }
+    /* 模拟按钮样式 */
+    .mock-btn {
+        background: #f1f5f9;
+        border: 1px solid #bbc8dc;
+        transition: 0.1s;
+    }
+    .mock-btn:active {
+        background: #d1d9e6;
+        transform: scale(0.96);
+    }
+    /* 左侧目录图标对齐 */
+    .sidebar a i {
+        width: 1.5rem;
+        text-align: center;
+        margin-right: 6px;
+    }
+    .level-2 i {
+        opacity: 0.7;
+        font-size: 0.8rem;
+    }
+    /* 小屏优化 */
+    @media (max-width: 600px) {
+        .content {
+            padding: 1rem;
+        }
+        .card {
+            padding: 1rem;
+        }
+    }
+</style>
+</body>
+</html>
